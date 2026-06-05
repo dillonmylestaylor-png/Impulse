@@ -3,13 +3,13 @@
 #define PLUG_VERSION_HEX 0x00000902
 #define PLUG_VERSION_STR "0.9.2"
 #define PLUG_UNIQUE_ID 'vxge'
-#define PLUG_MFR_ID 'AuEy'  // TODO: Change to unique manufacturer ID for Impulse
+#define PLUG_MFR_ID 'Tonk'
 #define PLUG_URL_STR "https://github.com/sdatkinson/NeuralAmpModelerPlugin"
 #define PLUG_EMAIL_STR "spam@me.com"
 #define PLUG_COPYRIGHT_STR "Copyright 2024 Tonkraf"
 #define PLUG_CLASS_NAME Impulse
 #define BUNDLE_NAME "Impulse"
-#define BUNDLE_MFR "AudioEyra"
+#define BUNDLE_MFR "Tonkraf"
 #define BUNDLE_DOMAIN "com"
 
 #define SHARED_RESOURCES_SUBPATH "Impulse"
