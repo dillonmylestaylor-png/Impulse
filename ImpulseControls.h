@@ -744,16 +744,18 @@ public:
     {
       case kMsgTagLoadFailed:
       case kMsgTagLoadFailedIR2:
-        // Honestly, not sure why I made a big stink of it before. Why not just say it failed and move on? :)
+      case kMsgTagLoadFailedIR3:
+      case kMsgTagLoadFailedIR4:
         {
           std::string label(std::string("(FAILED) ") + std::string(mFileNameControl->GetLabelStr()));
           mFileNameControl->SetLabelAndTooltip(label.c_str());
           SetBrowserState(NAMBrowserState::Empty);
         }
         break;
-      case kMsgTagLoadedModel:
       case kMsgTagLoadedIR:
       case kMsgTagLoadedIR2:
+      case kMsgTagLoadedIR3:
+      case kMsgTagLoadedIR4:
       {
         WDL_String fileName, directory;
         fileName.Set(reinterpret_cast<const char*>(pData));
@@ -1038,7 +1040,6 @@ public:
       HideAnimated(true);
       return true;
     }
-
     return false;
   }
 
@@ -1050,7 +1051,7 @@ public:
     {
       mHide = false;
     }
-    else // hide subcontrols immediately
+    else
     {
       ForAllChildrenFunc([hide](int childIdx, IControl* pChild) { pChild->Hide(hide); });
     }
@@ -1084,14 +1085,11 @@ public:
                                  .WithDrawFrame(false)
                                  .WithShadowOffset(2.f);
     const auto text = IText(DEFAULT_TEXT_SIZE, EAlign::Center, PluginColors::HELP_TEXT);
-    const auto leftText = text.WithAlign(EAlign::Near);
     const auto style = mStyle.WithDrawFrame(false).WithValueText(text);
-    const IVStyle leftStyle = style.WithValueText(leftText);
 
     const auto titleArea = GetRECT().GetPadded(-(pad + 10.0f)).GetFromTop(50.0f);
     AddNamedChildControl(new IVLabelControl(titleArea, "SETTINGS", titleStyle), mControlNames.title);
 
-    // Attach controls
     {
       const float height = NAM_KNOB_HEIGHT + NAM_SWTICH_HEIGHT + 10.0f + 85.0f;
       const float width = titleArea.W();
@@ -1099,59 +1097,23 @@ public:
       const auto leftArea = centerArea.GetFromLeft(0.5f * width);
       const auto rightArea = centerArea.GetFromRight(0.5f * width);
 
-      const float itemH = 40.0f;
       const float switchH = 25.0f;
       const float labelH = 18.0f;
-      const float pad = 8.0f;
       const float hPad = 50.0f;
-      const float autoGainRowH = labelH + switchH;
-      const float calRowH = itemH + pad + labelH + switchH;
+      const float irModeRowH = labelH + switchH;
 
-      // Auto Gain (top of left column)
-      const auto agLabelArea = leftArea.GetFromTop(labelH);
-      AddNamedChildControl(new IVLabelControl(agLabelArea, "Auto Gain", style), mControlNames.autoGainLabel);
-      const auto agSwitchArea = leftArea.GetFromTop(autoGainRowH).GetFromBottom(switchH).GetPadded(hPad, 0.0f, hPad, 0.0f);
-      auto* autoGainSwitch = AddNamedChildControl(
-        new NAMSwitchControl(agSwitchArea, kAutoGain, "", mStyle, mSwitchBitmap), mControlNames.autoGain);
-      autoGainSwitch->SetTooltip(
-        "When enabled, LVL and Volume knobs only affect power amp drive, not the overall output level.");
+      // IR Mode (left column)
+      const auto irModeLabelArea = leftArea.GetFromTop(labelH);
+      AddNamedChildControl(new IVLabelControl(irModeLabelArea, "IR Mode", style), mControlNames.irModeLabel);
+      const auto irModeSwitchArea = leftArea.GetFromTop(irModeRowH).GetFromBottom(switchH).GetPadded(hPad, 0.0f, hPad, 0.0f);
+      auto* irModeSwitch = AddNamedChildControl(
+        new NAMSwitchControl(irModeSwitchArea, kIRMode, "", mStyle, mSwitchBitmap), mControlNames.irMode);
+      irModeSwitch->SetTooltip(
+        "IR convolution mode. Zero Latency uses direct convolution with no added latency. Normal uses FFT convolution.");
 
-      // Calibration (below Auto Gain)
-      const auto calArea = leftArea.GetFromTop(autoGainRowH + pad + calRowH).GetFromBottom(calRowH);
-      const auto calSliderArea = calArea.GetFromTop(itemH).GetPadded(hPad, 0.0f, hPad, 0.0f);
-      const auto calLabelArea = calArea.GetFromTop(itemH + pad + labelH).GetFromBottom(labelH);
-      const auto calSwitchArea = calArea.GetFromBottom(switchH).GetPadded(hPad, 0.0f, hPad, 0.0f);
-      auto* inputLevelControl1 = AddNamedChildControl(
-        new InputLevelControl(calSliderArea, kInputCalibrationLevel, mInputLevelBackgroundBitmap, text),
-        mControlNames.inputCalibrationLevel, kCtrlTagInputCalibrationLevel);
-      inputLevelControl1->SetTooltip(
-        "The analog level, in dBu RMS, that corresponds to digital level of 0 dBFS peak in the host as its signal "
-        "enters this plugin.");
-      AddNamedChildControl(new IVLabelControl(calLabelArea, "Calibration", style), mControlNames.calibrationLabel);
-      AddNamedChildControl(
-        new NAMSwitchControl(calSwitchArea, kCalibrateInput, "", mStyle, mSwitchBitmap),
-        mControlNames.calibrateInput, kCtrlTagCalibrateInput);
-
-      // Oversampling, IR Mode, and Blend Nearest (right column, 3-way split)
-      const float osBtnSize = 8.0f;
-      const auto rightPadded = rightArea.GetPadded(-40.0f, 0.0f, -40.0f, 0.0f);
-      const auto osArea = rightPadded.GetFromTop(rightPadded.H() * 0.3f);
-      auto* osControl = AddNamedChildControl(
-        new OversamplingControl(osArea, kOversampling, mRadioButtonStyle, osBtnSize),
-        mControlNames.oversampling);
-      osControl->SetTooltip("Oversampling factor for reduced aliasing at high gains.");
-
-      const auto irModeArea = rightPadded.GetFromTop(rightPadded.H() * 0.65f).GetFromBottom(rightPadded.H() * 0.3f);
-      auto* irModeControl = AddNamedChildControl(
-        new IRModeControl(irModeArea, kIRMode, mRadioButtonStyle, osBtnSize),
-        mControlNames.irMode);
-      irModeControl->SetTooltip("IR convolution mode. Zero Latency uses direct convolution with no added latency. Normal uses FFT convolution (adds ~1.3ms latency at 48kHz). Hybrid uses direct for the first 128 taps and FFT for the remainder.");
-
-      const auto blendArea = rightPadded.GetFromBottom(rightPadded.H() * 0.3f);
-      auto* blendControl = AddNamedChildControl(
-        new BlendNearestControl(blendArea, kBlendNearest, mRadioButtonStyle, osBtnSize),
-        mControlNames.blendNearest);
-      blendControl->SetTooltip("Number of nearest captures to blend when interpolating between captures.");
+      // About section (right column)
+      const auto aboutArea = rightArea.GetPadded(-20.0f, 0.0f, -20.0f, 0.0f);
+      AddNamedChildControl(new AboutControl(aboutArea, style, text), mControlNames.about);
     }
 
     auto closeAction = [&](IControl* pCaller) {
@@ -1172,67 +1134,14 @@ private:
   int mAnimationTime = 200;
   bool mWillHide = false;
 
-  // Names for controls
-  // Make sure that these are all unique and that you use them with AddNamedChildControl
   struct ControlNames
   {
-    const std::string calibrateInput = "CalibrateInput";
     const std::string close = "Close";
-    const std::string inputCalibrationLevel = "InputCalibrationLevel";
-    const std::string oversampling = "Oversampling";
     const std::string irMode = "IRMode";
-    const std::string autoGain = "AutoGain";
-    const std::string autoGainLabel = "AutoGainLabel";
-    const std::string calibrationLabel = "CalibrationLabel";
-    const std::string blendNearest = "BlendNearest";
+    const std::string irModeLabel = "IRModeLabel";
     const std::string title = "Title";
+    const std::string about = "About";
   } mControlNames;
-
-  class InputLevelControl : public IEditableTextControl
-  {
-  public:
-    InputLevelControl(const IRECT& bounds, int paramIdx, const IBitmap& bitmap, const IText& text = DEFAULT_TEXT,
-                      const IColor& BGColor = DEFAULT_BGCOLOR)
-    : IEditableTextControl(bounds, "", text, BGColor)
-    , mBitmap(bitmap)
-    {
-      SetParamIdx(paramIdx);
-    };
-
-    void Draw(IGraphics& g) override
-    {
-      g.DrawFittedBitmap(mBitmap, mRECT);
-      ITextControl::Draw(g);
-    };
-
-    void SetValueFromUserInput(double normalizedValue, int valIdx) override
-    {
-      IControl::SetValueFromUserInput(normalizedValue, valIdx);
-      const std::string s = ConvertToString(normalizedValue);
-      OnTextEntryCompletion(s.c_str(), valIdx);
-    };
-
-    void SetValueFromDelegate(double normalizedValue, int valIdx) override
-    {
-      IControl::SetValueFromDelegate(normalizedValue, valIdx);
-      const std::string s = ConvertToString(normalizedValue);
-      SetStr(s.c_str());
-      SetDirty(false);
-    };
-
-  private:
-    std::string ConvertToString(const double normalizedValue)
-    {
-      const double naturalValue = GetParam()->FromNormalized(normalizedValue);
-      // And make the value to display
-      std::stringstream ss;
-      ss << naturalValue << " dBu";
-      std::string s = ss.str();
-      return s;
-    };
-
-    IBitmap mBitmap;
-  };
 
   class AboutControl : public IContainerBase
   {
@@ -1263,8 +1172,8 @@ private:
                                       "Plug-in development: Steve Atkinson, Oli Larkin, ... ",
                                       "https://github.com/sdatkinson/NeuralAmpModelerPlugin/graphs/contributors", mText,
                                       COLOR_TRANSPARENT, PluginColors::HELP_TEXT_MO, PluginColors::HELP_TEXT_CLICKED));
-      AddChildControl(new IURLControl(GetRECT().SubRectVertical(5, 4), "www.neuralampmodeler.com",
-                                      "https://www.neuralampmodeler.com", mText, COLOR_TRANSPARENT,
+      AddChildControl(new IURLControl(GetRECT().SubRectVertical(5, 4), "www.tonkraf.com",
+                                      "https://www.tonkraf.com", mText, COLOR_TRANSPARENT,
                                       PluginColors::HELP_TEXT_MO, PluginColors::HELP_TEXT_CLICKED));
     };
 

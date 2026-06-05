@@ -34,13 +34,13 @@
 					<key>description</key>
 					<string>Impulse</string>
 					<key>manufacturer</key>
-					<string>AuEy</string>
+					<string>Tonk</string>
 					<key>name</key>
 					<string>Tonkraf: Impulse</string>
 					<key>sandboxSafe</key>
 					<true/>
 					<key>subtype</key>
-					<string>1YEo</string>
+					<string>vxge</string>
 					<key>tags</key>
 					<array>
 						<string>Effects</string>

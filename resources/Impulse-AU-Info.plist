@@ -10,13 +10,13 @@
 			<key>factoryFunction</key>
 			<string>Impulse_Factory</string>
 			<key>manufacturer</key>
-			<string>AuEy</string>
+			<string>Tonk</string>
 			<key>name</key>
 			<string>Tonkraf: Impulse</string>
 			<key>sandboxSafe</key>
 			<true/>
 			<key>subtype</key>
-			<string>1YEo</string>
+			<string>vxge</string>
 			<key>type</key>
 			<string>aufx</string>
 			<key>version</key>
@@ -42,7 +42,7 @@
 	<key>CFBundleShortVersionString</key>
 	<string>0.9.2</string>
 	<key>CFBundleSignature</key>
-	<string>1YEo</string>
+	<string>vxge</string>
 	<key>CFBundleVersion</key>
 	<string>0.9.2</string>
 	<key>CSResourcesFileMapped</key>
