@@ -1,0 +1,475 @@
+// Unserialization
+//
+// This plugin is used in important places, so we need to be considerate when
+// attempting to unserialize. If the project was last saved with a legacy
+// version, then we need it to "update" to the current version is as
+// reasonable a way as possible.
+//
+// In order to handle older versions, the pattern is:
+// 1. Implement unserialization for every version into a version-specific
+//    struct (Let's use our friend nlohmann::json. Why not?)
+// 2. Implement an "update" from each struct to the next one.
+// 3. Implement assigning the data contained in the current struct to the
+//    current plugin configuration.
+//
+// This way, a constant amount of effort is required every time the
+// serialization changes instead of having to implement a current
+// unserialization for each past version.
+
+// Add new unserialization versions to the top, then add logic to the class method at the bottom.
+
+// Boilerplate
+
+void Impulse::_UnserializeApplyConfig(nlohmann::json& config)
+{
+  auto getParamByName = [&](std::string& name) {
+    // Could use a map but eh
+    for (int i = 0; i < kNumParams; i++)
+    {
+      iplug::IParam* param = GetParam(i);
+      if (strcmp(param->GetName(), name.c_str()) == 0)
+      {
+        return param;
+      }
+    }
+    // else
+    return (iplug::IParam*)nullptr;
+  };
+  TRACE
+  ENTER_PARAMS_MUTEX
+  for (auto it = config.begin(); it != config.end(); ++it)
+  {
+    std::string name = it.key();
+    iplug::IParam* pParam = getParamByName(name);
+    if (pParam != nullptr)
+    {
+      try
+      {
+        pParam->Set(*it);
+      }
+      catch (nlohmann::json::type_error& e)
+      {
+        std::cerr << "[Impulse] ERROR setting " << name << ": " << e.what() << " (value: " << *it << ")" << std::endl;
+      }
+      iplug::Trace(TRACELOC, "%s %f", pParam->GetName(), pParam->Value());
+    }
+    else
+    {
+      iplug::Trace(TRACELOC, "%s NOT-FOUND", name.c_str());
+    }
+  }
+  OnParamReset(iplug::EParamSource::kPresetRecall);
+  LEAVE_PARAMS_MUTEX
+
+  mCaptureDirPath.Set(static_cast<std::string>(config.value("CaptureDirPath", "")).c_str());
+  mNAMPath2.Set(static_cast<std::string>(config.value("NAMPath2", "")).c_str());
+  mIRPath.Set(static_cast<std::string>(config.value("IRPath", "")).c_str());
+  mIRPath2.Set(static_cast<std::string>(config.value("IRPath2", "")).c_str());
+
+  bool loadedFromDir = false;
+  if (mCaptureDirPath.GetLength())
+  {
+    _LoadCapturesFromDirectory(mCaptureDirPath);
+    loadedFromDir = true;
+  }
+  else if (config.contains("NAMPath"))
+  {
+    WDL_String oldPath(static_cast<std::string>(config["NAMPath"]).c_str());
+    if (oldPath.GetLength())
+    {
+      oldPath.remove_filepart();
+      if (oldPath.GetLength())
+      {
+        _LoadCapturesFromDirectory(oldPath);
+        loadedFromDir = true;
+      }
+    }
+  }
+  // Only restore single model 2 path if we didn't load captures from directory
+  // (directory loading already provides all power amp captures)
+  if (mNAMPath2.GetLength() && !loadedFromDir)
+  {
+    _StageModel2(mNAMPath2);
+  }
+  if (mIRPath.GetLength())
+  {
+    _StageIR(mIRPath);
+  }
+  if (mIRPath2.GetLength())
+  {
+    _StageIR2(mIRPath2);
+  }
+}
+
+// Unserialize NAM Path, IR path, then named keys
+int _UnserializePathsAndExpectedKeys(const iplug::IByteChunk& chunk, int startPos, nlohmann::json& config,
+                                     std::vector<std::string>& paramNames)
+{
+  int pos = startPos;
+  WDL_String path;
+  pos = chunk.GetStr(path, pos);
+  config["NAMPath"] = std::string(path.Get());
+  pos = chunk.GetStr(path, pos);
+  config["IRPath"] = std::string(path.Get());
+
+  for (auto it = paramNames.begin(); it != paramNames.end(); ++it)
+  {
+    double v = 0.0;
+    pos = chunk.Get(&v, pos);
+    config[*it] = v;
+  }
+  return pos;
+}
+
+// v0.8.0+ serialization includes mNAMPath2 between mNAMPath and mIRPath
+int _UnserializePathsAndExpectedKeys_0_8_0(const iplug::IByteChunk& chunk, int startPos, nlohmann::json& config,
+                                            std::vector<std::string>& paramNames)
+{
+  int pos = startPos;
+  WDL_String path;
+  pos = chunk.GetStr(path, pos);
+  config["CaptureDirPath"] = std::string(path.Get());
+  pos = chunk.GetStr(path, pos);
+  config["NAMPath2"] = std::string(path.Get());
+  pos = chunk.GetStr(path, pos);
+  config["IRPath"] = std::string(path.Get());
+
+  for (auto it = paramNames.begin(); it != paramNames.end(); ++it)
+  {
+    double v = 0.0;
+    pos = chunk.Get(&v, pos);
+    config[*it] = v;
+  }
+  return pos;
+}
+
+void _RenameKeys(nlohmann::json& j, std::unordered_map<std::string, std::string> newNames)
+{
+  // Assumes no aliasing!
+  for (auto it = newNames.begin(); it != newNames.end(); ++it)
+  {
+    if (j.contains(it->first))
+    {
+      j[it->second] = j[it->first];
+      j.erase(it->first);
+    }
+  }
+}
+
+// v0.9.0 (added IRPath2)
+
+int _UnserializePathsAndExpectedKeys_0_9_0(const iplug::IByteChunk& chunk, int startPos, nlohmann::json& config,
+                                            std::vector<std::string>& paramNames)
+{
+  int pos = startPos;
+  WDL_String path;
+  pos = chunk.GetStr(path, pos);
+  config["CaptureDirPath"] = std::string(path.Get());
+  pos = chunk.GetStr(path, pos);
+  config["NAMPath2"] = std::string(path.Get());
+  pos = chunk.GetStr(path, pos);
+  config["IRPath"] = std::string(path.Get());
+  pos = chunk.GetStr(path, pos);
+  config["IRPath2"] = std::string(path.Get());
+
+  for (auto it = paramNames.begin(); it != paramNames.end(); ++it)
+  {
+    double v = 0.0;
+    pos = chunk.Get(&v, pos);
+    config[*it] = v;
+  }
+  return pos;
+}
+
+int _GetConfigFrom_0_9_2(const iplug::IByteChunk& chunk, int startPos, nlohmann::json& config)
+{
+  std::vector<std::string> paramNames{"Gain",
+                                      "Threshold",
+                                      "Tone",
+                                      "LVL",
+                                      "Volume",
+                                      "Output",
+                                      "Input Trim",
+                                      "NoiseGateActive",
+                                      "IRToggle",
+                                      "CalibrateInput",
+                                      "InputCalibrationLevel",
+                                      "CalibrateInput2",
+                                      "InputCalibrationLevel2",
+                                      "OutputMode",
+                                      "OutputMode2",
+                                      "IR 1 Pan",
+                                      "IR 2 Pan"};
+
+  int pos = _UnserializePathsAndExpectedKeys_0_9_0(chunk, startPos, config, paramNames);
+  return pos;
+}
+
+int _GetConfigFrom_0_9_1(const iplug::IByteChunk& chunk, int startPos, nlohmann::json& config)
+{
+  std::vector<std::string> paramNames{"Gain",
+                                      "Threshold",
+                                      "Tone",
+                                      "LVL",
+                                      "Volume",
+                                      "Output",
+                                      "Input Trim",
+                                      "NoiseGateActive",
+                                      "IRToggle",
+                                      "CalibrateInput",
+                                      "InputCalibrationLevel",
+                                      "CalibrateInput2",
+                                      "InputCalibrationLevel2",
+                                      "OutputMode",
+                                      "OutputMode2"};
+
+  int pos = _UnserializePathsAndExpectedKeys_0_9_0(chunk, startPos, config, paramNames);
+  return pos;
+}
+
+int _GetConfigFrom_0_9_0(const iplug::IByteChunk& chunk, int startPos, nlohmann::json& config)
+{
+  std::vector<std::string> paramNames{"Gain",
+                                      "Threshold",
+                                      "Tone",
+                                      "LVL",
+                                      "Volume",
+                                      "Output",
+                                      "NoiseGateActive",
+                                      "IRToggle",
+                                      "CalibrateInput",
+                                      "InputCalibrationLevel",
+                                      "CalibrateInput2",
+                                      "InputCalibrationLevel2",
+                                      "OutputMode",
+                                      "OutputMode2"};
+
+  int pos = _UnserializePathsAndExpectedKeys_0_9_0(chunk, startPos, config, paramNames);
+  return pos;
+}
+
+// v0.8.0
+
+void _UpdateConfigFrom_0_8_0(nlohmann::json& config)
+{
+  std::unordered_map<std::string, std::string> newNames{{"Input2", "Volume"}};
+  _RenameKeys(config, newNames);
+}
+
+int _GetConfigFrom_0_8_0(const iplug::IByteChunk& chunk, int startPos, nlohmann::json& config)
+{
+  std::vector<std::string> paramNames{"Gain",
+                                      "Threshold",
+                                      "Tone",
+                                      "LVL",
+                                      "Volume",
+                                      "Output",
+                                      "NoiseGateActive",
+                                      "IRToggle",
+                                      "CalibrateInput",
+                                      "InputCalibrationLevel",
+                                      "CalibrateInput2",
+                                      "InputCalibrationLevel2",
+                                      "OutputMode",
+                                      "OutputMode2"};
+
+  int pos = _UnserializePathsAndExpectedKeys_0_8_0(chunk, startPos, config, paramNames);
+  _UpdateConfigFrom_0_8_0(config);
+  return pos;
+}
+
+// v0.7.12
+
+void _UpdateConfigFrom_0_7_12(nlohmann::json& config)
+{
+  std::unordered_map<std::string, std::string> newNames{{"Middle", "Tone"}, {"Output", "LVL"}, {"Input", "Gain"}};
+  _RenameKeys(config, newNames);
+}
+
+int _GetConfigFrom_0_7_12(const iplug::IByteChunk& chunk, int startPos, nlohmann::json& config)
+{
+  std::vector<std::string> paramNames{"Input",
+                                      "Threshold",
+                                      "Bass",
+                                      "Middle",
+                                      "Treble",
+                                      "Output",
+                                       "NoiseGateActive",
+                                       "IRToggle",
+                                       "CalibrateInput",
+                                      "InputCalibrationLevel",
+                                      "OutputMode"};
+
+  int pos = _UnserializePathsAndExpectedKeys(chunk, startPos, config, paramNames);
+  // Then update:
+  _UpdateConfigFrom_0_7_12(config);
+  return pos;
+}
+
+// 0.7.10
+
+void _UpdateConfigFrom_0_7_10(nlohmann::json& config)
+{
+  // Note: "OutNorm" is Bool-like in v0.7.10, but "OutputMode" is enum.
+  // This works because 0 is "Raw" (cf OutNorm false) and 1 is "Calibrated" (cf OutNorm true).
+  std::unordered_map<std::string, std::string> newNames{{"OutNorm", "OutputMode"}};
+  _RenameKeys(config, newNames);
+  // There are new parameters. If they're not included, then 0.7.12 is ok, but future ones might not be.
+  config[kCalibrateInputParamName] = (double)kDefaultCalibrateInput;
+  config[kInputCalibrationLevelParamName] = kDefaultInputCalibrationLevel;
+  _UpdateConfigFrom_0_7_12(config);
+}
+
+int _GetConfigFrom_0_7_10(const iplug::IByteChunk& chunk, int startPos, nlohmann::json& config)
+{
+  std::vector<std::string> paramNames{
+    "Input", "Threshold", "Bass", "Middle", "Treble", "Output", "NoiseGateActive", "OutNorm", "IRToggle"};
+  int pos = _UnserializePathsAndExpectedKeys(chunk, startPos, config, paramNames);
+  // Then update:
+  _UpdateConfigFrom_0_7_10(config);
+  return pos;
+}
+
+// Earlier than 0.7.10 (Assumed to be 0.7.3-0.7.9)
+
+void _UpdateConfigFrom_Earlier(nlohmann::json& config)
+{
+  std::unordered_map<std::string, std::string> newNames{{"Gate", "Threshold"}};
+  _RenameKeys(config, newNames);
+  _UpdateConfigFrom_0_7_10(config);
+}
+
+int _GetConfigFrom_Earlier(const iplug::IByteChunk& chunk, int startPos, nlohmann::json& config)
+{
+  std::vector<std::string> paramNames{
+    "Input", "Gate", "Bass", "Middle", "Treble", "Output", "NoiseGateActive", "OutNorm", "IRToggle"};
+
+  int pos = _UnserializePathsAndExpectedKeys(chunk, startPos, config, paramNames);
+  // Then update:
+  _UpdateConfigFrom_Earlier(config);
+  return pos;
+}
+
+//==============================================================================
+
+class _Version
+{
+public:
+  _Version(const int major, const int minor, const int patch)
+  : mMajor(major)
+  , mMinor(minor)
+  , mPatch(patch) {};
+  _Version(const std::string& versionStr)
+  {
+    std::istringstream stream(versionStr);
+    std::string token;
+    std::vector<int> parts;
+
+    // Split the string by "."
+    while (std::getline(stream, token, '.'))
+    {
+      parts.push_back(std::stoi(token)); // Convert to int and store
+    }
+
+    // Check if we have exactly 3 parts
+    if (parts.size() != 3)
+    {
+      throw std::invalid_argument("Input string does not contain exactly 3 segments separated by '.'");
+    }
+
+    // Assign the parts to the provided int variables
+    mMajor = parts[0];
+    mMinor = parts[1];
+    mPatch = parts[2];
+  };
+
+  bool operator>=(const _Version& other) const
+  {
+    // Compare on major version:
+    if (GetMajor() > other.GetMajor())
+    {
+      return true;
+    }
+    if (GetMajor() < other.GetMajor())
+    {
+      return false;
+    }
+    // Compare on minor
+    if (GetMinor() > other.GetMinor())
+    {
+      return true;
+    }
+    if (GetMinor() < other.GetMinor())
+    {
+      return false;
+    }
+    // Compare on patch
+    return GetPatch() >= other.GetPatch();
+  };
+
+  int GetMajor() const { return mMajor; };
+  int GetMinor() const { return mMinor; };
+  int GetPatch() const { return mPatch; };
+
+private:
+  int mMajor;
+  int mMinor;
+  int mPatch;
+};
+
+int Impulse::_UnserializeStateWithKnownVersion(const iplug::IByteChunk& chunk, int startPos)
+{
+  // We already got through the header before calling this.
+  int pos = startPos;
+
+  // Get the version
+  WDL_String wVersion;
+  pos = chunk.GetStr(wVersion, pos);
+  std::string versionStr(wVersion.Get());
+  _Version version(versionStr);
+  // Act accordingly
+  nlohmann::json config;
+  if (version >= _Version(0, 9, 2))
+  {
+    pos = _GetConfigFrom_0_9_2(chunk, pos, config);
+  }
+  else if (version >= _Version(0, 9, 1))
+  {
+    pos = _GetConfigFrom_0_9_1(chunk, pos, config);
+  }
+  else if (version >= _Version(0, 9, 0))
+  {
+    pos = _GetConfigFrom_0_9_0(chunk, pos, config);
+  }
+  else if (version >= _Version(0, 8, 0))
+  {
+    pos = _GetConfigFrom_0_8_0(chunk, pos, config);
+  }
+  else if (version >= _Version(0, 7, 12))
+  {
+    pos = _GetConfigFrom_0_7_12(chunk, pos, config);
+  }
+  else if (version >= _Version(0, 7, 10))
+  {
+    pos = _GetConfigFrom_0_7_10(chunk, pos, config);
+  }
+  else if (version >= _Version(0, 7, 9))
+  {
+    pos = _GetConfigFrom_Earlier(chunk, pos, config);
+  }
+  else
+  {
+    // You shouldn't be here...
+    assert(false);
+  }
+  _UnserializeApplyConfig(config);
+  return pos;
+}
+
+int Impulse::_UnserializeStateWithUnknownVersion(const iplug::IByteChunk& chunk, int startPos)
+{
+  nlohmann::json config;
+  int pos = _GetConfigFrom_Earlier(chunk, startPos, config);
+  _UnserializeApplyConfig(config);
+  return pos;
+}

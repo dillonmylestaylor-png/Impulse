@@ -1,0 +1,4 @@
+Target dependency graph (2 targets)
+Target 'VST3' in project 'Phoenix-macOS'
+➜ Explicit dependency on target 'Update plists' in project 'Phoenix-macOS'
+Target 'Update plists' in project 'Phoenix-macOS' (no dependencies)
