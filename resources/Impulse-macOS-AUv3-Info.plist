@@ -7,9 +7,9 @@
 	<key>CFBundleExecutable</key>
 	<string>Impulse</string>
 	<key>CFBundleGetInfoString</key>
-	<string>Impulse v0.9.2 Copyright 2024 Audio Eyra</string>
+	<string>Impulse v0.9.2 Copyright 2024 Tonkraf</string>
 	<key>CFBundleIdentifier</key>
-	<string>com.AudioEyra.app.Impulse.AUv3</string>
+	<string>com.Tonkraf.app.Impulse.AUv3</string>
 	<key>CFBundleInfoDictionaryVersion</key>
 	<string>6.0</string>
 	<key>CFBundleName</key>
@@ -27,7 +27,7 @@
 		<key>NSExtensionAttributes</key>
 		<dict>
 			<key>AudioComponentBundle</key>
-			<string>com.AudioEyra.app.Impulse.AUv3Framework</string>
+			<string>com.Tonkraf.app.Impulse.AUv3Framework</string>
 			<key>AudioComponents</key>
 			<array>
 				<dict>
@@ -36,7 +36,7 @@
 					<key>manufacturer</key>
 					<string>AuEy</string>
 					<key>name</key>
-					<string>Audio Eyra: Impulse</string>
+					<string>Tonkraf: Impulse</string>
 					<key>sandboxSafe</key>
 					<true/>
 					<key>subtype</key>

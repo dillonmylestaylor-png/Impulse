@@ -7,9 +7,9 @@
 	<key>CFBundleExecutable</key>
 	<string>Impulse</string>
 	<key>CFBundleGetInfoString</key>
-	<string>Impulse v0.9.2 Copyright 2024 Audio Eyra</string>
+	<string>Impulse v0.9.2 Copyright 2024 Tonkraf</string>
 	<key>CFBundleIdentifier</key>
-	<string>com.AudioEyra.vst3.Impulse</string>
+	<string>com.Tonkraf.vst3.Impulse</string>
 	<key>CFBundleInfoDictionaryVersion</key>
 	<string>6.0</string>
 	<key>CFBundleName</key>

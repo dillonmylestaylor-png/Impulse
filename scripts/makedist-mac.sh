@@ -21,8 +21,8 @@ SCRIPTS=$IPLUG2_ROOT/Scripts
 CODESIGN=0
 
 # macOS codesigning/notarization
-NOTARIZE_BUNDLE_ID=com.AudioEyra.NeuralAmpModeler
-NOTARIZE_BUNDLE_ID_DEMO=com.AudioEyra.NeuralAmpModeler.DEMO
+NOTARIZE_BUNDLE_ID=com.Tonkraf.NeuralAmpModeler
+NOTARIZE_BUNDLE_ID_DEMO=com.Tonkraf.NeuralAmpModeler.DEMO
 APP_SPECIFIC_ID=TODO
 APP_SPECIFIC_PWD=TODO
 
