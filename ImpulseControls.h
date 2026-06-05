@@ -355,81 +355,6 @@ public:
   }
 };
 
-class NAMGateKnobControl : public NAMKnobControl
-{
-public:
-  NAMGateKnobControl(const IRECT& bounds, int paramIdx, const char* label, const IVStyle& style, IBitmap bitmap)
-  : NAMKnobControl(bounds, paramIdx, label, style, bitmap)
-  {
-  }
-
-  bool IsHit(float x, float y) const override
-  {
-    return mLabelBounds.Contains(x, y) || mWidgetBounds.Contains(x, y) || mValueBounds.Contains(x, y);
-  }
-
-  void OnMouseDown(float x, float y, const IMouseMod& mod) override
-  {
-    if (mLabelBounds.Contains(x, y))
-    {
-      using namespace std::chrono;
-      static steady_clock::time_point sLastClick;
-      static int sLastParam = -1;
-
-      auto now = steady_clock::now();
-      auto dt = duration<double>(now - sLastClick).count();
-
-      if (GetParamIdx() == sLastParam && dt < 0.3)
-      {
-        sLastParam = -1;
-        if (auto* p = GetParam())
-        {
-          SetValueFromUserInput(p->GetDefault(true), 0);
-          GetDelegate()->SendParameterValueFromUI(GetParamIdx(), p->GetDefault(true));
-          GetUI()->SetAllControlsDirty();
-          GetUI()->ReleaseMouseCapture();
-        }
-        return;
-      }
-
-      sLastParam = GetParamIdx();
-      sLastClick = now;
-      _ToggleGate();
-      GetUI()->ReleaseMouseCapture();
-    }
-    else
-    {
-      if (mValueBounds.Contains(x, y))
-        NAMKnobControl::OnMouseDown(x, y, mod);
-      else
-      {
-        _EnsureGateOn();
-        NAMKnobControl::OnMouseDown(x, y, mod);
-      }
-    }
-  }
-
-  void OnMouseDblClick(float x, float y, const IMouseMod& mod) override
-  {
-    NAMKnobControl::OnMouseDblClick(x, y, mod);
-  }
-
-  void _ToggleGate()
-  {
-    auto* pPlug = static_cast<PLUG_CLASS_NAME*>(GetDelegate());
-    const int idx = kNoiseGateActive;
-    pPlug->SendParameterValueFromUI(idx, pPlug->GetParam(idx)->Bool() ? 0.0 : 1.0);
-  }
-
-  void _EnsureGateOn()
-  {
-    auto* pPlug = static_cast<PLUG_CLASS_NAME*>(GetDelegate());
-    const int idx = kNoiseGateActive;
-    if (!pPlug->GetParam(idx)->Bool())
-      pPlug->SendParameterValueFromUI(idx, 1.0);
-  }
-};
-
 class NAMSwitchControl : public IVSlideSwitchControl, public IBitmapBase
 {
 public:
@@ -1091,28 +1016,7 @@ public:
     AddNamedChildControl(new IVLabelControl(titleArea, "SETTINGS", titleStyle), mControlNames.title);
 
     {
-      const float height = NAM_KNOB_HEIGHT + NAM_SWTICH_HEIGHT + 10.0f + 85.0f;
-      const float width = titleArea.W();
-      const auto centerArea = titleArea.GetFromBottom(height).GetTranslated(0.0f, height);
-      const auto leftArea = centerArea.GetFromLeft(0.5f * width);
-      const auto rightArea = centerArea.GetFromRight(0.5f * width);
-
-      const float switchH = 25.0f;
-      const float labelH = 18.0f;
-      const float hPad = 50.0f;
-      const float irModeRowH = labelH + switchH;
-
-      // IR Mode (left column)
-      const auto irModeLabelArea = leftArea.GetFromTop(labelH);
-      AddNamedChildControl(new IVLabelControl(irModeLabelArea, "IR Mode", style), mControlNames.irModeLabel);
-      const auto irModeSwitchArea = leftArea.GetFromTop(irModeRowH).GetFromBottom(switchH).GetPadded(hPad, 0.0f, hPad, 0.0f);
-      auto* irModeSwitch = AddNamedChildControl(
-        new NAMSwitchControl(irModeSwitchArea, kIRMode, "", mStyle, mSwitchBitmap), mControlNames.irMode);
-      irModeSwitch->SetTooltip(
-        "IR convolution mode. Zero Latency uses direct convolution with no added latency. Normal uses FFT convolution.");
-
-      // About section (right column)
-      const auto aboutArea = rightArea.GetPadded(-20.0f, 0.0f, -20.0f, 0.0f);
+      const auto aboutArea = GetRECT().GetPadded(-40.0f, 60.0f, -40.0f, 40.0f);
       AddNamedChildControl(new AboutControl(aboutArea, style, text), mControlNames.about);
     }
 
@@ -1137,8 +1041,6 @@ private:
   struct ControlNames
   {
     const std::string close = "Close";
-    const std::string irMode = "IRMode";
-    const std::string irModeLabel = "IRModeLabel";
     const std::string title = "Title";
     const std::string about = "About";
   } mControlNames;

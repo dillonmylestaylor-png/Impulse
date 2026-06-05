@@ -54,7 +54,7 @@ const iplug::igraphics::IColor OFF_WHITE(255, 243, 246, 249); // Material UI bec
 
 // Blue mode
 const iplug::igraphics::IColor NAM_1(255, 29, 26, 31); // Raisin Black
-const iplug::igraphics::IColor NAM_2(255, 232, 162, 89); // Light Amber
+const iplug::igraphics::IColor NAM_2(255, 80, 133, 232); // Azure
 const iplug::igraphics::IColor NAM_3(255, 162, 178, 191); // Cadet Blue Crayola
 // Alts
 // const iplug::igraphics::IColor NAM_1(255, 18, 17, 19);  // Smoky Black
@@ -69,12 +69,12 @@ const iplug::igraphics::IColor NAM_3(255, 162, 178, 191); // Cadet Blue Crayola
 
 // Evan Heritage theme colors
 const iplug::igraphics::IColor NAM_0(0, 18, 17, 19); // Transparent
-const iplug::igraphics::IColor NAM_THEMECOLOR(255, 255, 191, 87); // Warm Amber
-// const iplug::igraphics::IColor NAM_THEMECOLOR(255, 255, 255, 255); // White
+const iplug::igraphics::IColor NAM_THEMECOLOR(255, 255, 255, 255); // White
+// const iplug::igraphics::IColor NAM_THEMECOLOR(255, 23, 190, 187); // Custom :)
 const iplug::igraphics::IColor NAM_THEMEFONTCOLOR(255, 242, 242, 242); // Dark White
 
 // UAD-style blue background
-const iplug::igraphics::IColor NAM_BG_BLUE(255, 176, 108, 53); // Warm Amber
+const iplug::igraphics::IColor NAM_BG_BLUE(255, 52, 126, 176);
 
 // Dark control panel
 const iplug::igraphics::IColor NAM_PANEL_DARK(255, 35, 35, 40);

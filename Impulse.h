@@ -5,7 +5,6 @@
 #include <vector>
 
 #include "../AudioDSPTools/dsp/ImpulseResponse.h"
-#include "../AudioDSPTools/dsp/NoiseGate.h"
 #include "../AudioDSPTools/dsp/RecursiveLinearFilter.h"
 #include "../AudioDSPTools/dsp/dsp.h"
 #include "../AudioDSPTools/dsp/wav.h"
@@ -33,10 +32,8 @@ public:
 enum EParams
 {
   kInputLevel = 0,
-  kNoiseGateThreshold,
   kOutputLevel,
   kInputTrim,
-  kNoiseGateActive,
   kIRMode,
   // IR 0
   kIRToggle,
@@ -167,9 +164,6 @@ private:
 
   double mInputGain = 1.0;
   double mOutputGain = 1.0;
-
-  dsp::noise_gate::Trigger mNoiseGateTrigger;
-  dsp::noise_gate::Gain mNoiseGateGain;
 
   // IRs
   struct IRSlot {

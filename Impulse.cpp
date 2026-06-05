@@ -78,9 +78,6 @@ Impulse::Impulse(const InstanceInfo& info)
   GetParam(kInputLevel)->InitGain("Input", 0.0, -40.0, 40.0, 0.1);
   GetParam(kOutputLevel)->InitGain("Output", 0.0, -40.0, 40.0, 0.1);
   GetParam(kInputTrim)->InitDouble("Trim", 0.0, -40.0, 40.0, 0.1, "dB");
-  GetParam(kNoiseGateThreshold)->InitGain("Gate", -80.0, -100.0, 0.0, 0.1);
-  GetParam(kNoiseGateActive)->InitBool("NoiseGateActive", true);
-  mNoiseGateTrigger.AddListener(&mNoiseGateGain);
   GetParam(kIRMode)->InitEnum("IR Mode", 0, {"Zero Latency", "Normal"});
 
   // IR 0
@@ -159,7 +156,7 @@ Impulse::Impulse(const InstanceInfo& info)
     const auto topBarHeight = 96.0f;
     const float topBarKnobH = 64.0f;
 
-    // ===== TOP BAR: IN + meter | Gate | Trim | Logo | OUT =====
+    // ===== TOP BAR: IN + meter | Trim | Logo | IR Mode | OUT =====
     const auto topBar = contentArea.GetFromTop(topBarHeight);
     const float meterW = 14.0f;
     const float meterH = 32.0f;
@@ -174,22 +171,12 @@ Impulse::Impulse(const InstanceInfo& info)
                                    inLabelArea.R + 4 + meterW, topBar.B)
                                .GetCentredInside(meterW, meterH);
 
-    // Gate knob
-    const float gateKnobW = 64.0f;
-    const float gateLabelH = 12.0f;
-    const auto gateArea = IRECT(inMeterArea.R + 4, topBar.T + 2,
-                                inMeterArea.R + 4 + gateKnobW, topBar.B - 2);
-    const auto gateLabelArea = gateArea.GetFromTop(gateLabelH).GetCentredInside(gateKnobW, gateLabelH);
-    const auto gateKnobArea = IRECT(gateArea.L, gateLabelArea.B + 2,
-                                    gateArea.R, gateLabelArea.B + 2 + topBarKnobH);
-    const auto gateValueArea = IRECT(gateArea.L, gateKnobArea.B + 2,
-                                     gateArea.R, gateArea.B);
-
     // Input trim knob
     const float inTrimW = 64.0f;
-    const auto inTrimArea = IRECT(gateArea.R + 4, topBar.T + 2,
-                                  gateArea.R + 4 + inTrimW, topBar.B - 2);
-    const auto inTrimLabelArea = inTrimArea.GetFromTop(gateLabelH).GetCentredInside(inTrimW, gateLabelH);
+    const float labelH = 12.0f;
+    const auto inTrimArea = IRECT(inMeterArea.R + 4, topBar.T + 2,
+                                  inMeterArea.R + 4 + inTrimW, topBar.B - 2);
+    const auto inTrimLabelArea = inTrimArea.GetFromTop(labelH).GetCentredInside(inTrimW, labelH);
     const auto inTrimKnobArea = IRECT(inTrimArea.L, inTrimLabelArea.B + 2,
                                       inTrimArea.R, inTrimLabelArea.B + 2 + topBarKnobH);
     const auto inTrimValueArea = IRECT(inTrimArea.L, inTrimKnobArea.B + 2,
@@ -206,7 +193,7 @@ Impulse::Impulse(const InstanceInfo& info)
                                 .GetCentredInside(outLabelW, 22);
     const auto outKnobContainer = IRECT(outSection.L, topBar.T + 2,
                                         outLabelArea.L - 8, topBar.B - 2);
-    const auto outKnobLabelArea = outKnobContainer.GetFromTop(gateLabelH).GetCentredInside(outKnobContainer.W(), gateLabelH);
+    const auto outKnobLabelArea = outKnobContainer.GetFromTop(labelH).GetCentredInside(outKnobContainer.W(), labelH);
     const auto outKnobSubArea = IRECT(outKnobContainer.L, outKnobLabelArea.B + 2,
                                       outKnobContainer.R, outKnobLabelArea.B + 2 + topBarKnobH);
     const auto outKnobValueArea = IRECT(outKnobContainer.L, outKnobSubArea.B + 2,
@@ -214,6 +201,12 @@ Impulse::Impulse(const InstanceInfo& info)
 
     // Center logo area
     const auto logoArea = topBar.GetCentredInside(140, 55);
+
+    // IR Mode switch (small, between logo and OUT)
+    const auto irModeArea = IRECT(logoArea.R + 10, topBar.T + 2, outSection.L - 10, topBar.B - 2);
+    const auto irModeLabelArea = irModeArea.GetFromTop(labelH).GetCentredInside(irModeArea.W(), labelH);
+    const auto irModeSwitchArea = IRECT(irModeArea.L, irModeLabelArea.B + 2,
+                                        irModeArea.R, irModeLabelArea.B + 2 + 30);
 
     // ===== MAIN CONTENT AREA: IR slots =====
     const auto mainContentArea = contentArea.GetReducedFromTop(topBarHeight);
@@ -237,15 +230,6 @@ Impulse::Impulse(const InstanceInfo& info)
     // Top bar elements
     pGraphics->AttachControl(new ITextControl(inLabelArea, "IN", IText(16, PluginColors::NAM_THEMEFONTCOLOR, "Michroma-Regular")));
     pGraphics->AttachControl(new NAMMeterControl(inMeterArea, meterBackgroundBitmap, style), kCtrlTagInputMeter);
-    pGraphics->AttachControl(new ITextControl(gateLabelArea, "Gate", IText(11, PluginColors::NAM_THEMEFONTCOLOR, "Michroma-Regular")));
-    {
-      auto* gateKnob = new NAMGateKnobControl(gateKnobArea, kNoiseGateThreshold, "Gate", style, knobBackgroundBitmap);
-      gateKnob->HideLabel();
-      gateKnob->HideValue();
-      pGraphics->AttachControl(gateKnob);
-    }
-    pGraphics->AttachControl(new ICaptionControl(gateValueArea, kNoiseGateThreshold,
-      IText(11, PluginColors::NAM_THEMEFONTCOLOR, "Michroma-Regular"), COLOR_TRANSPARENT, true));
     pGraphics->AttachControl(new ITextControl(inTrimLabelArea, "Input", IText(11, PluginColors::NAM_THEMEFONTCOLOR, "Michroma-Regular")));
     {
       auto* trimKnob = new NAMKnobControl(inTrimKnobArea, kInputTrim, "", style, knobBackgroundBitmap);
@@ -255,6 +239,12 @@ Impulse::Impulse(const InstanceInfo& info)
     }
     pGraphics->AttachControl(new ICaptionControl(inTrimValueArea, kInputTrim,
       IText(11, PluginColors::NAM_THEMEFONTCOLOR, "Michroma-Regular"), COLOR_TRANSPARENT, true));
+    pGraphics->AttachControl(new ITextControl(irModeLabelArea, "IR Mode", IText(11, PluginColors::NAM_THEMEFONTCOLOR, "Michroma-Regular")));
+    {
+      auto* irModeSwitch = new NAMSwitchControl(irModeSwitchArea, kIRMode, "", style, switchHandleBitmap);
+      irModeSwitch->SetTooltip("IR convolution mode: Zero Latency vs Normal (FFT)");
+      pGraphics->AttachControl(irModeSwitch);
+    }
     pGraphics->AttachControl(new ITextControl(outKnobLabelArea, "Output", IText(11, PluginColors::NAM_THEMEFONTCOLOR, "Michroma-Regular")));
     {
       auto* outKnob = new NAMKnobControl(outKnobSubArea, kOutputLevel, "", style, knobBackgroundBitmap);
@@ -397,27 +387,6 @@ void Impulse::ProcessBlock(iplug::sample** inputs, iplug::sample** outputs, int 
   _PrepareBuffers(numChannelsInternal, numFrames);
   _ProcessInput(inputs, numFrames, numChannelsExternalIn, numChannelsInternal);
   _ApplyDSPStaging();
-  const bool noiseGateActive = GetParam(kNoiseGateActive)->Value();
-
-  // Noise gate trigger
-  sample** triggerOutput = mInputPointers;
-  if (noiseGateActive)
-  {
-    const double time = 0.01;
-    const double threshold = GetParam(kNoiseGateThreshold)->Value();
-    const double ratio = 0.1;
-    const double openTime = 0.005;
-    const double holdTime = 0.01;
-    const double closeTime = 0.05;
-    const dsp::noise_gate::TriggerParams triggerParams(time, threshold, ratio, openTime, holdTime, closeTime);
-    mNoiseGateTrigger.SetParams(triggerParams);
-    mNoiseGateTrigger.SetSampleRate(sampleRate);
-    triggerOutput = mNoiseGateTrigger.Process(mInputPointers, numChannelsInternal, numFrames);
-  }
-
-  // Apply the noise gate after the trigger
-  sample** gateGainOutput =
-    noiseGateActive ? mNoiseGateGain.Process(triggerOutput, numChannelsInternal, numFrames) : triggerOutput;
 
   // Set IR convolution mode
   for (auto& slot : mIRSlots)
@@ -455,7 +424,7 @@ void Impulse::ProcessBlock(iplug::sample** inputs, iplug::sample** outputs, int 
 
       if (!mIRSlots[i].ir || !GetParam(toggleParam)->Value()) continue;
 
-      sample** irOut = mIRSlots[i].ir->Process(gateGainOutput, numChannelsInternal, numFrames);
+      sample** irOut = mIRSlots[i].ir->Process(mInputPointers, numChannelsInternal, numFrames);
       const int delay = GetParam(delayParam)->Int();
       const double pol = GetParam(phaseParam)->Bool() ? -1.0 : 1.0;
       const double level = GetParam(levelParam)->Value();
@@ -479,8 +448,8 @@ void Impulse::ProcessBlock(iplug::sample** inputs, iplug::sample** outputs, int 
     {
       for (size_t s = 0; s < numFrames; s++)
       {
-        mIRStereoBuffer[s] = gateGainOutput[0][s];
-        mIRStereoBuffer[numFrames + s] = gateGainOutput[0][s];
+        mIRStereoBuffer[s] = mInputPointers[0][s];
+        mIRStereoBuffer[numFrames + s] = mInputPointers[0][s];
       }
     }
 
@@ -518,7 +487,7 @@ void Impulse::ProcessBlock(iplug::sample** inputs, iplug::sample** outputs, int 
 
       if (!mIRSlots[i].ir || !GetParam(toggleParam)->Value()) continue;
 
-      sample** irOut = mIRSlots[i].ir->Process(gateGainOutput, numChannelsInternal, numFrames);
+      sample** irOut = mIRSlots[i].ir->Process(mInputPointers, numChannelsInternal, numFrames);
       const int delay = GetParam(delayParam)->Int();
       const double pol = GetParam(phaseParam)->Bool() ? -1.0 : 1.0;
       const double level = GetParam(levelParam)->Value();
@@ -536,7 +505,7 @@ void Impulse::ProcessBlock(iplug::sample** inputs, iplug::sample** outputs, int 
     {
       for (size_t c = 0; c < numChannelsInternal; c++)
         for (size_t s = 0; s < numFrames; s++)
-          mIRBlendBuffer[c * numFrames + s] = gateGainOutput[c][s];
+          mIRBlendBuffer[c * numFrames + s] = mInputPointers[c][s];
     }
 
     sample** monoPtrs = new sample*[numChannelsInternal];
@@ -734,9 +703,6 @@ void Impulse::OnParamChangeUI(int paramIdx, EParamSource source)
 
     switch (paramIdx)
     {
-      case kNoiseGateActive:
-        pGraphics->GetControlWithParamIdx(kNoiseGateThreshold)->SetDisabled(!active);
-        break;
       default:
         break;
     }
