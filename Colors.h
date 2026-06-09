@@ -74,7 +74,7 @@ const iplug::igraphics::IColor NAM_THEMECOLOR(255, 255, 255, 255); // White
 const iplug::igraphics::IColor NAM_THEMEFONTCOLOR(255, 242, 242, 242); // Dark White
 
 // UAD-style blue background
-const iplug::igraphics::IColor NAM_BG_BLUE(255, 52, 126, 176);
+const iplug::igraphics::IColor NAM_BG_BLUE(255, 28, 28, 30);
 
 // Dark control panel
 const iplug::igraphics::IColor NAM_PANEL_DARK(255, 35, 35, 40);

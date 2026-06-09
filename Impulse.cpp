@@ -56,6 +56,18 @@ const IVStyle knobStyle =
        .WithLabelText(IText(DEFAULT_TEXT_SIZE + 3.f, COLOR_BLACK, nullptr, EAlign::Center, EVAlign::Middle));
 const IVStyle titleStyle =
   DEFAULT_STYLE.WithValueText(IText(30, COLOR_WHITE, "Michroma-Regular")).WithDrawFrame(false).WithShadowOffset(2.f);
+const IVStyle filterRadioStyle =
+  style
+    .WithLabelText(IText(9, PluginColors::NAM_THEMEFONTCOLOR, "Roboto-Regular"))
+    .WithValueText(IText(9, PluginColors::NAM_THEMEFONTCOLOR, "Roboto-Regular"))
+    .WithColor(EVColor::kON, PluginColors::NAM_THEMECOLOR)
+    .WithColor(EVColor::kOFF, PluginColors::NAM_THEMECOLOR.WithOpacity(0.1f))
+    .WithColor(EVColor::kX1, PluginColors::NAM_THEMECOLOR.WithOpacity(0.6f));
+const IVStyle radioButtonStyle =
+  style
+    .WithColor(EVColor::kON, PluginColors::NAM_THEMECOLOR)
+    .WithColor(EVColor::kOFF, PluginColors::NAM_THEMECOLOR.WithOpacity(0.1f))
+    .WithColor(EVColor::kX1, PluginColors::NAM_THEMECOLOR.WithOpacity(0.6f));
 
 #ifndef NO_IGRAPHICS
 EMsgBoxResult _ShowMessageBox(iplug::igraphics::IGraphics* pGraphics, const char* str, const char* caption,
@@ -78,39 +90,68 @@ Impulse::Impulse(const InstanceInfo& info)
   GetParam(kInputLevel)->InitGain("Input", 0.0, -40.0, 40.0, 0.1);
   GetParam(kOutputLevel)->InitGain("Output", 0.0, -40.0, 40.0, 0.1);
   GetParam(kInputTrim)->InitDouble("Trim", 0.0, -40.0, 40.0, 0.1, "dB");
-  GetParam(kIRMode)->InitEnum("IR Mode", 0, {"Zero Latency", "Normal"});
+  GetParam(kIRMode)->InitEnum("Mode", 0, {"Zero Latency", "Normal"});
 
   // IR 0
-  GetParam(kIRToggle)->InitBool("IR 1", true);
-  GetParam(kIRPolarity)->InitBool("Phase", false);
-  GetParam(kIRLevel)->InitDouble("Level", 1.0, 0.0, 1.0, 0.01, "");
-  GetParam(kIRMute)->InitBool("Mute", false);
-  GetParam(kIRDelay)->InitInt("Delay", 0, 0, 99, "%i samples");
-  GetParam(kIRPan)->InitDouble("Pan", 0.0, -1.0, 1.0, 0.01, "");
+  GetParam(kIRToggle)->InitBool("IR1", true);
+  GetParam(kIRPolarity)->InitBool("IR1 Phase", false);
+  GetParam(kIRLevel)->InitDouble("IR1 Level", 1.0, 0.0, 1.0, 0.01, "");
+  GetParam(kIRMute)->InitBool("IR1 Mute", false);
+  GetParam(kIRDelay)->InitInt("IR1 Delay", 0, 0, 99, "%i samples");
+  GetParam(kIRPan)->InitDouble("IR1 Pan", 0.0, -1.0, 1.0, 0.01, "");
 
   // IR 1
-  GetParam(kIRToggle2)->InitBool("IR 2", true);
-  GetParam(kIRPolarity2)->InitBool("Phase", false);
-  GetParam(kIRLevel2)->InitDouble("Level", 1.0, 0.0, 1.0, 0.01, "");
-  GetParam(kIRMute2)->InitBool("Mute", false);
-  GetParam(kIRDelay2)->InitInt("Delay", 0, 0, 99, "%i samples");
-  GetParam(kIRPan2)->InitDouble("Pan", 0.0, -1.0, 1.0, 0.01, "");
+  GetParam(kIRToggle2)->InitBool("IR2", true);
+  GetParam(kIRPolarity2)->InitBool("IR2 Phase", false);
+  GetParam(kIRLevel2)->InitDouble("IR2 Level", 1.0, 0.0, 1.0, 0.01, "");
+  GetParam(kIRMute2)->InitBool("IR2 Mute", false);
+  GetParam(kIRDelay2)->InitInt("IR2 Delay", 0, 0, 99, "%i samples");
+  GetParam(kIRPan2)->InitDouble("IR2 Pan", 0.0, -1.0, 1.0, 0.01, "");
 
   // IR 2
-  GetParam(kIRToggle3)->InitBool("IR 3", true);
-  GetParam(kIRPolarity3)->InitBool("Phase", false);
-  GetParam(kIRLevel3)->InitDouble("Level", 1.0, 0.0, 1.0, 0.01, "");
-  GetParam(kIRMute3)->InitBool("Mute", false);
-  GetParam(kIRDelay3)->InitInt("Delay", 0, 0, 99, "%i samples");
-  GetParam(kIRPan3)->InitDouble("Pan", 0.0, -1.0, 1.0, 0.01, "");
+  GetParam(kIRToggle3)->InitBool("IR3", true);
+  GetParam(kIRPolarity3)->InitBool("IR3 Phase", false);
+  GetParam(kIRLevel3)->InitDouble("IR3 Level", 1.0, 0.0, 1.0, 0.01, "");
+  GetParam(kIRMute3)->InitBool("IR3 Mute", false);
+  GetParam(kIRDelay3)->InitInt("IR3 Delay", 0, 0, 99, "%i samples");
+  GetParam(kIRPan3)->InitDouble("IR3 Pan", 0.0, -1.0, 1.0, 0.01, "");
 
   // IR 3
-  GetParam(kIRToggle4)->InitBool("IR 4", true);
-  GetParam(kIRPolarity4)->InitBool("Phase", false);
-  GetParam(kIRLevel4)->InitDouble("Level", 1.0, 0.0, 1.0, 0.01, "");
-  GetParam(kIRMute4)->InitBool("Mute", false);
-  GetParam(kIRDelay4)->InitInt("Delay", 0, 0, 99, "%i samples");
-  GetParam(kIRPan4)->InitDouble("Pan", 0.0, -1.0, 1.0, 0.01, "");
+  GetParam(kIRToggle4)->InitBool("IR4", true);
+  GetParam(kIRPolarity4)->InitBool("IR4 Phase", false);
+  GetParam(kIRLevel4)->InitDouble("IR4 Level", 1.0, 0.0, 1.0, 0.01, "");
+  GetParam(kIRMute4)->InitBool("IR4 Mute", false);
+  GetParam(kIRDelay4)->InitInt("IR4 Delay", 0, 0, 99, "%i samples");
+  GetParam(kIRPan4)->InitDouble("IR4 Pan", 0.0, -1.0, 1.0, 0.01, "");
+
+  // IR 0 HPF/LPF
+  GetParam(kIRHPFreq)->InitDouble("IR1 HPF Freq", 5.0, 5.0, 1000.0, 1.0, "Hz");
+  GetParam(kIRHPFSlope)->InitEnum("IR1 HPF Slope", 0, {"6", "12", "18"});
+  GetParam(kIRHPFBypass)->InitBool("IR1 HPF Bypass", true);
+  GetParam(kIRLPFreq)->InitDouble("IR1 LPF Freq", 20000.0, 1000.0, 20000.0, 1.0, "Hz");
+  GetParam(kIRLPFSlope)->InitEnum("IR1 LPF Slope", 0, {"6", "12", "18"});
+  GetParam(kIRLPFBypass)->InitBool("IR1 LPF Bypass", true);
+  // IR 1 HPF/LPF
+  GetParam(kIRHPFreq2)->InitDouble("IR2 HPF Freq", 5.0, 5.0, 1000.0, 1.0, "Hz");
+  GetParam(kIRHPFSlope2)->InitEnum("IR2 HPF Slope", 0, {"6", "12", "18"});
+  GetParam(kIRHPFBypass2)->InitBool("IR2 HPF Bypass", true);
+  GetParam(kIRLPFreq2)->InitDouble("IR2 LPF Freq", 20000.0, 1000.0, 20000.0, 1.0, "Hz");
+  GetParam(kIRLPFSlope2)->InitEnum("IR2 LPF Slope", 0, {"6", "12", "18"});
+  GetParam(kIRLPFBypass2)->InitBool("IR2 LPF Bypass", true);
+  // IR 2 HPF/LPF
+  GetParam(kIRHPFreq3)->InitDouble("IR3 HPF Freq", 5.0, 5.0, 1000.0, 1.0, "Hz");
+  GetParam(kIRHPFSlope3)->InitEnum("IR3 HPF Slope", 0, {"6", "12", "18"});
+  GetParam(kIRHPFBypass3)->InitBool("IR3 HPF Bypass", true);
+  GetParam(kIRLPFreq3)->InitDouble("IR3 LPF Freq", 20000.0, 1000.0, 20000.0, 1.0, "Hz");
+  GetParam(kIRLPFSlope3)->InitEnum("IR3 LPF Slope", 0, {"6", "12", "18"});
+  GetParam(kIRLPFBypass3)->InitBool("IR3 LPF Bypass", true);
+  // IR 3 HPF/LPF
+  GetParam(kIRHPFreq4)->InitDouble("IR4 HPF Freq", 5.0, 5.0, 1000.0, 1.0, "Hz");
+  GetParam(kIRHPFSlope4)->InitEnum("IR4 HPF Slope", 0, {"6", "12", "18"});
+  GetParam(kIRHPFBypass4)->InitBool("IR4 HPF Bypass", true);
+  GetParam(kIRLPFreq4)->InitDouble("IR4 LPF Freq", 20000.0, 1000.0, 20000.0, 1.0, "Hz");
+  GetParam(kIRLPFSlope4)->InitEnum("IR4 LPF Slope", 0, {"6", "12", "18"});
+  GetParam(kIRLPFBypass4)->InitBool("IR4 LPF Bypass", true);
 
 #ifndef NO_IGRAPHICS
   mMakeGraphicsFunc = [&]() {
@@ -141,7 +182,6 @@ Impulse::Impulse(const InstanceInfo& info)
     const auto irIconOnSVG = pGraphics->LoadSVG(IR_ICON_ON_FN);
     const auto irIconOffSVG = pGraphics->LoadSVG(IR_ICON_OFF_FN);
 
-    const auto backgroundBitmap = pGraphics->LoadBitmap(BACKGROUND_FN);
     const auto controlsBackgroundBitmap = pGraphics->LoadBitmap(CONTROLSBACKGROUND_FN);
     const auto fileBackgroundBitmap = pGraphics->LoadBitmap(FILEBACKGROUND_FN);
     const auto inputLevelBackgroundBitmap = pGraphics->LoadBitmap(INPUTLEVELBACKGROUND_FN);
@@ -162,20 +202,21 @@ Impulse::Impulse(const InstanceInfo& info)
     const float meterH = 32.0f;
     const float topBarPad = 25.0f;
 
-    // IN label + meter
-    const float inLabelW = 22.0f;
-    const auto inLabelArea = IRECT(topBar.L + topBarPad, topBar.T,
-                                   topBar.L + topBarPad + inLabelW, topBar.B)
+    // IN section: meter | label | trim knob (mirrors OUT)
+    const float inSectionW = 130.0f;
+    const float inLabelW = 32.0f;
+    const auto inSection = IRECT(topBar.L + topBarPad, topBar.T,
+                                 topBar.L + topBarPad + inSectionW, topBar.B);
+    const auto inMeterArea = inSection.GetFromLeft(meterW).GetCentredInside(meterW, meterH);
+    const auto inLabelArea = IRECT(inMeterArea.R + 4, topBar.T,
+                                   inMeterArea.R + 4 + inLabelW, topBar.B)
                                .GetCentredInside(inLabelW, 22);
-    const auto inMeterArea = IRECT(inLabelArea.R + 4, topBar.T,
-                                   inLabelArea.R + 4 + meterW, topBar.B)
-                               .GetCentredInside(meterW, meterH);
 
     // Input trim knob
     const float inTrimW = 64.0f;
     const float labelH = 12.0f;
-    const auto inTrimArea = IRECT(inMeterArea.R + 4, topBar.T + 2,
-                                  inMeterArea.R + 4 + inTrimW, topBar.B - 2);
+    const auto inTrimArea = IRECT(inLabelArea.R + 8, topBar.T + 2,
+                                  inSection.R, topBar.B - 2);
     const auto inTrimLabelArea = inTrimArea.GetFromTop(labelH).GetCentredInside(inTrimW, labelH);
     const auto inTrimKnobArea = IRECT(inTrimArea.L, inTrimLabelArea.B + 2,
                                       inTrimArea.R, inTrimLabelArea.B + 2 + topBarKnobH);
@@ -202,11 +243,8 @@ Impulse::Impulse(const InstanceInfo& info)
     // Center logo area
     const auto logoArea = topBar.GetCentredInside(140, 55);
 
-    // IR Mode switch (small, between logo and OUT)
-    const auto irModeArea = IRECT(logoArea.R + 10, topBar.T + 2, outSection.L - 10, topBar.B - 2);
-    const auto irModeLabelArea = irModeArea.GetFromTop(labelH).GetCentredInside(irModeArea.W(), labelH);
-    const auto irModeSwitchArea = IRECT(irModeArea.L, irModeLabelArea.B + 2,
-                                        irModeArea.R, irModeLabelArea.B + 2 + 30);
+    // IR Mode buttons (between logo and OUT)
+    const auto irModeArea = IRECT(logoArea.R + 8, topBar.T + 4, outSection.L - 8, topBar.B - 4);
 
     // ===== MAIN CONTENT AREA: IR slots =====
     const auto mainContentArea = contentArea.GetReducedFromTop(topBarHeight);
@@ -214,10 +252,9 @@ Impulse::Impulse(const InstanceInfo& info)
 
     // IR section layout: 4 rows stacked vertically
     const auto irRowHeight = irSection.H() / 4.0f;
-    const auto btnSz = 26.0f;
-    const auto panKnobSz = 52.0f;
+    const auto btnSz = 30.0f;
     const auto irLabelH = 11.0f;
-    const auto irLabelGap = 2.0f;
+    const auto irLabelGap = 6.0f;
     const auto fileHeight = 30.0f;
 
     const char* const defaultIRString = "Select IR...";
@@ -225,6 +262,9 @@ Impulse::Impulse(const InstanceInfo& info)
 
     // Draw background
     pGraphics->AttachControl(new NAMBackgroundControl(b, PluginColors::NAM_BG_BLUE));
+    const auto impulseLabelArea = logoArea.GetFromTop(18.0f).GetVShifted(-logoArea.H() * 0.5f);
+    pGraphics->AttachControl(new ITextControl(impulseLabelArea, "IMPULSE",
+      IText(16, PluginColors::NAM_THEMEFONTCOLOR, "Michroma-Regular")));
     pGraphics->AttachControl(new NAMAmpImageControl(logoArea, logoBitmap));
 
     // Top bar elements
@@ -239,11 +279,10 @@ Impulse::Impulse(const InstanceInfo& info)
     }
     pGraphics->AttachControl(new ICaptionControl(inTrimValueArea, kInputTrim,
       IText(11, PluginColors::NAM_THEMEFONTCOLOR, "Michroma-Regular"), COLOR_TRANSPARENT, true));
-    pGraphics->AttachControl(new ITextControl(irModeLabelArea, "IR Mode", IText(11, PluginColors::NAM_THEMEFONTCOLOR, "Michroma-Regular")));
     {
-      auto* irModeSwitch = new NAMSwitchControl(irModeSwitchArea, kIRMode, "", style, switchHandleBitmap);
-      irModeSwitch->SetTooltip("IR convolution mode: Zero Latency vs Normal (FFT)");
-      pGraphics->AttachControl(irModeSwitch);
+      auto* irModeCtrl = new IVRadioButtonControl(irModeArea, kIRMode, {}, "Mode", radioButtonStyle, EVShape::Rectangle, EDirection::Vertical, 20.f);
+      irModeCtrl->SetTooltip("IR convolution mode: Zero Latency vs Normal (FFT)");
+      pGraphics->AttachControl(irModeCtrl);
     }
     pGraphics->AttachControl(new ITextControl(outKnobLabelArea, "Output", IText(11, PluginColors::NAM_THEMEFONTCOLOR, "Michroma-Regular")));
     {
@@ -267,14 +306,18 @@ Impulse::Impulse(const InstanceInfo& info)
 
       const auto controlsRow = IRECT(row.L, row.T, row.R, fileRow.T - 4);
       const auto levelArea = controlsRow.GetFromLeft(100.0f).GetCentredInside(100.0f, controlsRow.H());
-      const auto ctrls = controlsRow.GetFromRight(controlsRow.W() - 100.0f);
-      const auto ctrlW = ctrls.W() / 5.0f;
-      const auto phaseArea = IRECT(ctrls.L, ctrls.T, ctrls.L + ctrlW, ctrls.B).GetCentredInside(btnSz, btnSz);
-      const auto muteArea = IRECT(ctrls.L + ctrlW, ctrls.T, ctrls.L + ctrlW * 2.0f, ctrls.B).GetCentredInside(btnSz, btnSz);
-      const auto delayCircleArea = IRECT(ctrls.L + ctrlW * 2.0f, ctrls.T, ctrls.L + ctrlW * 3.0f, ctrls.B).GetCentredInside(btnSz, btnSz);
-      const auto delayLabelArea = IRECT(ctrls.L + ctrlW * 2.0f, delayCircleArea.B + irLabelGap, ctrls.L + ctrlW * 3.0f, delayCircleArea.B + irLabelGap + irLabelH);
-      const auto panArea = IRECT(ctrls.L + ctrlW * 3.0f, ctrls.T, ctrls.L + ctrlW * 4.0f, ctrls.B);
-      const auto labelArea = IRECT(ctrls.L + ctrlW * 4.0f, ctrls.T, ctrls.R, ctrls.B).GetCentredInside(40.0f, 20.0f);
+      const auto ctrlGap = 2.0f;
+      const auto ctrlPackW = fileRow.W();
+      const auto ctrlPackL = fileRow.L;
+      const auto ctrlW = ctrlPackW / 4.0f;
+      const auto phaseArea = IRECT(ctrlPackL, controlsRow.T, ctrlPackL + ctrlW, controlsRow.B).GetCentredInside(btnSz, btnSz);
+      const auto muteArea = IRECT(ctrlPackL + ctrlW, controlsRow.T, ctrlPackL + ctrlW * 2.0f, controlsRow.B).GetCentredInside(btnSz, btnSz);
+      const auto delayAreaL = ctrlPackL + ctrlW * 2.0f;
+      const auto delayCircleArea = IRECT(delayAreaL, controlsRow.T, delayAreaL + ctrlW, controlsRow.B).GetCentredInside(btnSz, btnSz);
+      const auto delayLabelArea = IRECT(delayAreaL, delayCircleArea.B + irLabelGap, delayAreaL + ctrlW, delayCircleArea.B + irLabelGap + irLabelH);
+      const auto panAreaL = ctrlPackL + ctrlW * 3.0f;
+      const auto panArea = IRECT(panAreaL, controlsRow.T, panAreaL + ctrlW, controlsRow.B).GetCentredInside(btnSz, btnSz);
+      const auto panLabelArea = IRECT(panAreaL, panArea.B + irLabelGap, panAreaL + ctrlW, panArea.B + irLabelGap + irLabelH);
 
       const int toggleParam = kIRToggle + i * 6;
       const int phaseParam = kIRPolarity + i * 6;
@@ -284,11 +327,6 @@ Impulse::Impulse(const InstanceInfo& info)
       const int panParam = kIRPan + i * 6;
       const int browserTag = kCtrlTagIRFileBrowser + i;
       const int clearMsg = kMsgTagClearIR + i;
-
-      // IR label
-      char irLabel[8];
-      snprintf(irLabel, sizeof(irLabel), "IR %d", i + 1);
-      pGraphics->AttachControl(new ITextControl(labelArea, irLabel, IText(14, PluginColors::NAM_THEMEFONTCOLOR, "Michroma-Regular")));
 
       // Toggle
       pGraphics->AttachControl(new ISVGSwitchControl(switchArea, {irIconOffSVG, irIconOnSVG}, toggleParam));
@@ -315,7 +353,9 @@ Impulse::Impulse(const InstanceInfo& info)
         browserTag);
 
       // Level knob
-      pGraphics->AttachControl(new NAMKnobControl(levelArea, levelParam, irLabel, style, knobBackgroundBitmap));
+      char lvlLabel[8];
+      snprintf(lvlLabel, sizeof(lvlLabel), "IR %d", i + 1);
+      pGraphics->AttachControl(new NAMKnobControl(levelArea, levelParam, lvlLabel, style, knobBackgroundBitmap));
 
       // Phase
       pGraphics->AttachControl(new NAMPhaseFlipControl(phaseArea, phaseParam));
@@ -329,10 +369,46 @@ Impulse::Impulse(const InstanceInfo& info)
         pDelay->HideLabel();
         pGraphics->AttachControl(pDelay);
       }
-      pGraphics->AttachControl(new ITextControl(delayLabelArea, "Delay", IText(11, PluginColors::NAM_THEMEFONTCOLOR, "Roboto-Regular")));
+      pGraphics->AttachControl(new NAMLabelControl(delayLabelArea, "Delay", IText(11, PluginColors::NAM_THEMEFONTCOLOR, "Roboto-Regular"), delayParam));
 
       // Pan
-      pGraphics->AttachControl(new NAMKnobControl(panArea, panParam, "Pan", style, knobBackgroundBitmap));
+      {
+        auto* panCtrl = new NAMPanCircleControl(panArea, panParam);
+        panCtrl->HideLabel();
+        pGraphics->AttachControl(panCtrl);
+      }
+      pGraphics->AttachControl(new NAMLabelControl(panLabelArea, "Pan", IText(11, PluginColors::NAM_THEMEFONTCOLOR, "Roboto-Regular"), panParam), kCtrlTagPanLabel + i);
+
+      // Per-IR HPF/LPF filter controls (right side panel)
+      const float filterCircW = 28.0f;
+      const float filterGap = 4.0f;
+      const auto filterPanel = IRECT(fileRow.R + 8, row.T, row.R, row.B);
+      const float filterHalfH = filterPanel.H() / 2.0f;
+      const auto hpfPanel = IRECT(filterPanel.L, filterPanel.T, filterPanel.R, filterPanel.T + filterHalfH);
+      const auto lpfPanel = IRECT(filterPanel.L, hpfPanel.B, filterPanel.R, filterPanel.B);
+
+      const int hpfFreqP = kIRHPFreq + i * 6;
+      const int hpfSlopeP = kIRHPFSlope + i * 6;
+      const int hpfBypP = kIRHPFBypass + i * 6;
+      const int lpfFreqP = kIRLPFreq + i * 6;
+      const int lpfSlopeP = kIRLPFSlope + i * 6;
+      const int lpfBypP = kIRLPFBypass + i * 6;
+
+      // HPF: [freq circle] [slope radio with clickable "HPF" title]
+      {
+        const auto hpfFreqArea = hpfPanel.GetFromLeft(filterCircW).GetCentredInside(filterCircW, filterCircW);
+        pGraphics->AttachControl(new NAMFreqCircleControl(hpfFreqArea, hpfFreqP));
+        const auto hpfSlopeArea = IRECT(hpfFreqArea.R + filterGap, hpfPanel.T, hpfPanel.R, hpfPanel.B);
+        pGraphics->AttachControl(new NAMFilterRadioButton(hpfSlopeArea, hpfSlopeP, {}, "HPF", filterRadioStyle, EVShape::Rectangle, EDirection::Horizontal, 10.f, hpfBypP));
+      }
+
+      // LPF: [freq circle] [slope radio with clickable "LPF" title]
+      {
+        const auto lpfFreqArea = lpfPanel.GetFromLeft(filterCircW).GetCentredInside(filterCircW, filterCircW);
+        pGraphics->AttachControl(new NAMFreqCircleControl(lpfFreqArea, lpfFreqP));
+        const auto lpfSlopeArea = IRECT(lpfFreqArea.R + filterGap, lpfPanel.T, lpfPanel.R, lpfPanel.B);
+        pGraphics->AttachControl(new NAMFilterRadioButton(lpfSlopeArea, lpfSlopeP, {}, "LPF", filterRadioStyle, EVShape::Rectangle, EDirection::Horizontal, 10.f, lpfBypP));
+      }
     }
 
     // Settings/help/about box
@@ -360,6 +436,14 @@ Impulse::Impulse(const InstanceInfo& info)
       if (idx == kIRPan || idx == kIRPan2 || idx == kIRPan3 || idx == kIRPan4)
         pControl->SetMouseEventsWhenDisabled(false);
     });
+
+    // Force all controls to sync displayed value from param defaults
+    pGraphics->ForAllControlsFunc([](IControl* c) {
+      if (int idx = c->GetParamIdx(); idx >= 0 && idx < kNumParams)
+        if (auto* p = c->GetParam())
+          c->SetValue(p->GetDefault(true));
+    });
+    pGraphics->SetAllControlsDirty();
   };
 #endif
 }
@@ -398,12 +482,17 @@ void Impulse::ProcessBlock(iplug::sample** inputs, iplug::sample** outputs, int 
 
   // Count active IRs for blend scaling
   int activeCount = 0;
+  int toggledOnCount = 0;
   for (int i = 0; i < kNumIRs; i++)
   {
     const int toggleParam = kIRToggle + i * 6;
     const int muteParam = kIRMute + i * 6;
-    if (mIRSlots[i].ir && GetParam(toggleParam)->Value() && !GetParam(muteParam)->Bool())
-      activeCount++;
+    if (mIRSlots[i].ir && GetParam(toggleParam)->Value())
+    {
+      toggledOnCount++;
+      if (!GetParam(muteParam)->Bool())
+        activeCount++;
+    }
   }
   const double blendScale = activeCount > 1 ? 1.0 / static_cast<double>(activeCount) : 1.0;
 
@@ -435,6 +524,39 @@ void Impulse::ProcessBlock(iplug::sample** inputs, iplug::sample** outputs, int 
 
       _ApplyIRDelay(irOut, delay, mIRSlots[i].delayBuffer, mIRSlots[i].delayWritePos, numChannelsInternal, numFrames);
 
+      // Per-IR HPF
+      {
+        const int hpfBypP = kIRHPFBypass + i * 6;
+        if (!GetParam(hpfBypP)->Bool())
+        {
+          const double hpfFreq = GetParam(kIRHPFreq + i * 6)->Value();
+          const int nStages = GetParam(kIRHPFSlope + i * 6)->Int() + 1;
+          auto& stages = mIRSlots[i].hpfStages;
+          if ((int)stages.size() != nStages) stages.resize(nStages);
+          for (auto& f : stages)
+          {
+            f.SetParams(recursive_linear_filter::HighPassParams(sampleRate, hpfFreq));
+            irOut = f.Process(irOut, numChannelsInternal, numFrames);
+          }
+        }
+      }
+      // Per-IR LPF
+      {
+        const int lpfBypP = kIRLPFBypass + i * 6;
+        if (!GetParam(lpfBypP)->Bool())
+        {
+          const double lpfFreq = GetParam(kIRLPFreq + i * 6)->Value();
+          const int nStages = GetParam(kIRLPFSlope + i * 6)->Int() + 1;
+          auto& stages = mIRSlots[i].lpfStages;
+          if ((int)stages.size() != nStages) stages.resize(nStages);
+          for (auto& f : stages)
+          {
+            f.SetParams(recursive_linear_filter::LowPassParams(sampleRate, lpfFreq));
+            irOut = f.Process(irOut, numChannelsInternal, numFrames);
+          }
+        }
+      }
+
       for (size_t s = 0; s < numFrames; s++)
       {
         const double s_val = irOut[0][s] * pol * level * mute * blendScale * kIRMakeupGain;
@@ -443,8 +565,8 @@ void Impulse::ProcessBlock(iplug::sample** inputs, iplug::sample** outputs, int 
       }
     }
 
-    // If no IRs active, pass through
-    if (activeCount == 0)
+    // If no IRs toggled on at all, pass through
+    if (toggledOnCount == 0)
     {
       for (size_t s = 0; s < numFrames; s++)
       {
@@ -461,11 +583,11 @@ void Impulse::ProcessBlock(iplug::sample** inputs, iplug::sample** outputs, int 
     stereoPtrs[0] = mIRBlendBuffer.data();
     stereoPtrs[1] = mIRBlendBuffer.data() + numFrames;
 
-    // HPF
+    // DC blocker
     const double highPassCutoffFreq = kDCBlockerFrequency;
     const recursive_linear_filter::HighPassParams highPassParams(sampleRate, highPassCutoffFreq);
-    mHighPass.SetParams(highPassParams);
-    sample** hpfPointers = mHighPass.Process(stereoPtrs, stereoChans, numFrames);
+    mDCBlocker.SetParams(highPassParams);
+    sample** hpfPointers = mDCBlocker.Process(stereoPtrs, stereoChans, numFrames);
 
     std::feupdateenv(&fe_state);
     _ProcessOutput(hpfPointers, outputs, numFrames, stereoChans, numChannelsExternalOut);
@@ -495,13 +617,46 @@ void Impulse::ProcessBlock(iplug::sample** inputs, iplug::sample** outputs, int 
 
       _ApplyIRDelay(irOut, delay, mIRSlots[i].delayBuffer, mIRSlots[i].delayWritePos, numChannelsInternal, numFrames);
 
+      // Per-IR HPF
+      {
+        const int hpfBypP = kIRHPFBypass + i * 6;
+        if (!GetParam(hpfBypP)->Bool())
+        {
+          const double hpfFreq = GetParam(kIRHPFreq + i * 6)->Value();
+          const int nStages = GetParam(kIRHPFSlope + i * 6)->Int() + 1;
+          auto& stages = mIRSlots[i].hpfStages;
+          if ((int)stages.size() != nStages) stages.resize(nStages);
+          for (auto& f : stages)
+          {
+            f.SetParams(recursive_linear_filter::HighPassParams(sampleRate, hpfFreq));
+            irOut = f.Process(irOut, numChannelsInternal, numFrames);
+          }
+        }
+      }
+      // Per-IR LPF
+      {
+        const int lpfBypP = kIRLPFBypass + i * 6;
+        if (!GetParam(lpfBypP)->Bool())
+        {
+          const double lpfFreq = GetParam(kIRLPFreq + i * 6)->Value();
+          const int nStages = GetParam(kIRLPFSlope + i * 6)->Int() + 1;
+          auto& stages = mIRSlots[i].lpfStages;
+          if ((int)stages.size() != nStages) stages.resize(nStages);
+          for (auto& f : stages)
+          {
+            f.SetParams(recursive_linear_filter::LowPassParams(sampleRate, lpfFreq));
+            irOut = f.Process(irOut, numChannelsInternal, numFrames);
+          }
+        }
+      }
+
       for (size_t c = 0; c < numChannelsInternal; c++)
         for (size_t s = 0; s < numFrames; s++)
           mIRBlendBuffer[c * numFrames + s] += irOut[c][s] * pol * level * mute * blendScale * kIRMakeupGain;
     }
 
-    // If no IRs active, pass through
-    if (activeCount == 0)
+    // If no IRs toggled on at all, pass through
+    if (toggledOnCount == 0)
     {
       for (size_t c = 0; c < numChannelsInternal; c++)
         for (size_t s = 0; s < numFrames; s++)
@@ -512,15 +667,30 @@ void Impulse::ProcessBlock(iplug::sample** inputs, iplug::sample** outputs, int 
     for (size_t c = 0; c < numChannelsInternal; c++)
       monoPtrs[c] = &mIRBlendBuffer[c * numFrames];
 
-    // HPF
+    // DC blocker
     const double highPassCutoffFreq = kDCBlockerFrequency;
     const recursive_linear_filter::HighPassParams highPassParams(sampleRate, highPassCutoffFreq);
-    mHighPass.SetParams(highPassParams);
-    sample** hpfPointers = mHighPass.Process(monoPtrs, numChannelsInternal, numFrames);
+    mDCBlocker.SetParams(highPassParams);
+    sample** hpfPointers = mDCBlocker.Process(monoPtrs, numChannelsInternal, numFrames);
 
     std::feupdateenv(&fe_state);
     _ProcessOutput(hpfPointers, outputs, numFrames, numChannelsInternal, numChannelsExternalOut);
     delete[] monoPtrs;
+  }
+
+  // Click-free fade for IR toggles
+  if (mFadeCounter > 0)
+  {
+    for (size_t c = 0; c < numChannelsExternalOut; c++)
+      for (size_t i = 0; i < numFrames && mFadeCounter > 0; i++, mFadeCounter--)
+      {
+        double gain = 1.0;
+        if (mFadeCounter > 128)
+          gain = (256 - mFadeCounter) / 128.0;
+        else
+          gain = mFadeCounter / 128.0;
+        outputs[c][i] *= gain;
+      }
   }
 
   _UpdateMeters(mPreGainPointers, outputs, numFrames, numChannelsInternal, numChannelsExternalOut);
@@ -544,11 +714,14 @@ void Impulse::OnReset()
     const bool stereo = mStereoOutput.load();
     for (int i = 0; i < kNumIRs; i++)
     {
-      auto* pPan = pGraphics->GetControlWithParamIdx(kIRPan + i * 6);
-      if (pPan)
+      pGraphics->ForControlWithParam(kIRPan + i * 6, [stereo](IControl* c) {
+        c->SetDisabled(!stereo);
+        c->Hide(!stereo);
+      });
+      if (auto* panLabel = pGraphics->GetControlWithTag(kCtrlTagPanLabel + i))
       {
-        pPan->SetDisabled(!stereo);
-        pPan->Hide(!stereo);
+        panLabel->SetDisabled(!stereo);
+        panLabel->Hide(!stereo);
       }
       if (!stereo)
         GetParam(kIRPan + i * 6)->Set(0.0);
@@ -562,6 +735,9 @@ void Impulse::OnIdle()
 {
   mInputSender.TransmitData(*this);
   mOutputSender.TransmitData(*this);
+
+  // Destroy retired IRs off the audio thread
+  mIRRetirement.clear();
 }
 
 bool Impulse::SerializeState(IByteChunk& chunk) const
@@ -595,6 +771,27 @@ int Impulse::UnserializeState(const IByteChunk& chunk, int startPos)
 void Impulse::OnUIOpen()
 {
   Plugin::OnUIOpen();
+
+#ifndef NO_IGRAPHICS
+  if (auto pGraphics = GetUI())
+  {
+    const bool stereo = NOutChansConnected() > 1;
+    for (int i = 0; i < kNumIRs; i++)
+    {
+      pGraphics->ForControlWithParam(kIRPan + i * 6, [stereo](IControl* c) {
+        c->SetDisabled(!stereo);
+        c->Hide(!stereo);
+      });
+      if (auto* panLabel = pGraphics->GetControlWithTag(kCtrlTagPanLabel + i))
+      {
+        panLabel->SetDisabled(!stereo);
+        panLabel->Hide(!stereo);
+      }
+      if (!stereo)
+        GetParam(kIRPan + i * 6)->Set(0.0);
+    }
+  }
+#endif
 
   for (int i = 0; i < kNumIRs; i++)
   {
@@ -688,12 +885,10 @@ void Impulse::OnParamChangeUI(int paramIdx, EParamSource source)
     auto _SetPanState = [&](int toggleParam, int panParam)
     {
       bool toggleOn = toggleParam == paramIdx ? active : GetParam(toggleParam)->Bool();
-      auto* pPan = pGraphics->GetControlWithParamIdx(panParam);
-      if (pPan)
-      {
+      pGraphics->ForControlWithParam(panParam, [toggleOn, stereo](IControl* pPan) {
         pPan->SetDisabled(!toggleOn);
         pPan->Hide(!toggleOn || !stereo);
-      }
+      });
       if (!stereo)
         GetParam(panParam)->Set(0.0);
     };
@@ -703,6 +898,12 @@ void Impulse::OnParamChangeUI(int paramIdx, EParamSource source)
 
     switch (paramIdx)
     {
+      case kIRToggle:
+      case kIRToggle2:
+      case kIRToggle3:
+      case kIRToggle4:
+        mFadeCounter = 256;
+        break;
       default:
         break;
     }
@@ -778,8 +979,14 @@ void Impulse::_ApplyDSPStaging()
     }
     if (mIRSlots[i].stagedIR != nullptr)
     {
+      // Retire old IR for deferred destruction (avoids vDSP_destroy_fftsetup on audio thread)
+      if (mIRSlots[i].ir)
+        mIRRetirement.push_back(std::move(mIRSlots[i].ir));
       mIRSlots[i].ir = std::move(mIRSlots[i].stagedIR);
       mIRSlots[i].stagedIR = nullptr;
+      // Reset delay buffer for clean start
+      mIRSlots[i].delayBuffer.assign(mIRSlots[i].delayBuffer.size(), 0.0);
+      mIRSlots[i].delayWritePos = 0;
     }
   }
 }

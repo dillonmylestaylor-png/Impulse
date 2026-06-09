@@ -212,6 +212,47 @@ public:
   }
 };
 
+class NAMFilterRadioButton : public IVRadioButtonControl
+{
+public:
+  NAMFilterRadioButton(const IRECT& bounds, int paramIdx, const std::initializer_list<const char*>& options,
+                       const char* label, const IVStyle& style, EVShape shape, EDirection dir, float buttonSize,
+                       int bypassParamIdx)
+  : IVRadioButtonControl(bounds, paramIdx, options, label, style, shape, dir, buttonSize)
+  , mBypassParamIdx(bypassParamIdx)
+  {
+  }
+
+  bool IsHit(float x, float y) const override
+  {
+    return mLabelBounds.Contains(x, y) || IVTabSwitchControl::IsHit(x, y);
+  }
+
+  void OnMouseDown(float x, float y, const IMouseMod& mod) override
+  {
+    if (mLabelBounds.Contains(x, y) && mBypassParamIdx >= 0)
+    {
+      double newVal = 1.0 - GetDelegate()->GetParam(mBypassParamIdx)->GetNormalized();
+      GetDelegate()->SendParameterValueFromUI(mBypassParamIdx, newVal);
+      return;
+    }
+    IVRadioButtonControl::OnMouseDown(x, y, mod);
+  }
+
+  void Draw(IGraphics& g) override
+  {
+    if (mBypassParamIdx >= 0)
+    {
+      bool bypassed = GetDelegate()->GetParam(mBypassParamIdx)->Value() > 0.5;
+      SetDisabled(bypassed);
+    }
+    IVRadioButtonControl::Draw(g);
+  }
+
+private:
+  int mBypassParamIdx;
+};
+
 class NAMDelayControl : public IControl
 {
 public:
@@ -221,6 +262,12 @@ public:
   }
 
   void HideLabel() { mHideLabel = true; }
+
+  void OnInit() override
+  {
+    if (auto* p = GetParam())
+      SetValue(p->GetNormalized());
+  }
 
   void OnMouseDown(float x, float y, const IMouseMod& mod) override
   {
@@ -232,14 +279,16 @@ public:
 
   void Draw(IGraphics& g) override
   {
+    if (auto* p = GetParam())
+      SetValue(p->GetNormalized());
     const int delay = static_cast<int>(GetValue() * 99.0);
     const auto r = mRECT;
     const float cx = r.MW();
-    const float radius = 13.0f;
+    const float radius = std::min(r.W(), r.H()) * 0.5f;
     const float cy = r.MH();
     const auto circleRect = IRECT(cx - radius, cy - radius, cx + radius, cy + radius);
 
-    IText valText(static_cast<int>(radius * 0.9f), COLOR_WHITE, "Roboto-Regular",
+    IText valText(static_cast<int>(radius * 0.6f), PluginColors::NAM_THEMEFONTCOLOR, "Roboto-Regular",
                   EAlign::Center, EVAlign::Middle);
     IText labelText(11, COLOR_WHITE, "Roboto-Regular",
                     EAlign::Center, EVAlign::Top);
@@ -281,6 +330,180 @@ private:
   std::chrono::steady_clock::time_point mLastClick;
 };
 
+class NAMFreqCircleControl : public IControl
+{
+public:
+  NAMFreqCircleControl(const IRECT& bounds, int paramIdx)
+  : IControl(bounds, paramIdx)
+  {
+  }
+
+  void OnInit() override
+  {
+    if (auto* p = GetParam())
+      SetValue(p->GetNormalized());
+  }
+
+  void OnMouseDown(float x, float y, const IMouseMod& mod) override
+  {
+    static auto lastClick = std::chrono::steady_clock::now();
+    auto now = std::chrono::steady_clock::now();
+    bool dbl = std::chrono::duration_cast<std::chrono::milliseconds>(now - lastClick).count() < 200;
+    lastClick = now;
+
+    if (dbl)
+    {
+      if (auto* p = GetParam())
+      {
+        double def = p->GetDefault(true);
+        SetValueFromUserInput(def, 0);
+        GetDelegate()->SendParameterValueFromUI(GetParamIdx(), def);
+        return;
+      }
+    }
+
+    if (mod.R) PromptUserInput(0);
+  }
+
+  void Draw(IGraphics& g) override
+  {
+    if (auto* p = GetParam())
+      SetValue(p->GetNormalized());
+
+    const auto r = mRECT;
+    const float cx = r.MW();
+    const float radius = std::min(r.W(), r.H()) * 0.5f;
+    const float cy = r.MH();
+    const auto circleRect = IRECT(cx - radius, cy - radius, cx + radius, cy + radius);
+
+    IText valText(static_cast<int>(radius * 0.55f), PluginColors::NAM_THEMEFONTCOLOR, "Roboto-Regular",
+                  EAlign::Center, EVAlign::Middle);
+
+    if (mMouseIsOver)
+      g.FillEllipse(PluginColors::MOUSEOVER, circleRect);
+
+    g.DrawEllipse(COLOR_WHITE, circleRect, nullptr, 1.5f);
+
+    char buf[16];
+    if (auto* pParam = GetParam())
+    {
+      double val = pParam->Value();
+      if (val >= 1000.0)
+        snprintf(buf, sizeof(buf), "%.1fk", val / 1000.0);
+      else
+        snprintf(buf, sizeof(buf), "%.0f", val);
+    }
+    else
+      snprintf(buf, sizeof(buf), "0");
+    g.DrawText(valText, buf, circleRect);
+  }
+
+  void OnMouseDrag(float x, float y, float dX, float dY, const IMouseMod& mod) override
+  {
+    double val = GetValue() - dY * 0.005;
+    val = std::max(0.0, std::min(1.0, val));
+    SetValue(val);
+    SetDirty(true);
+  }
+
+  void OnMouseWheel(float x, float y, const IMouseMod& mod, float d) override
+  {
+    double val = GetValue() + (d > 0 ? 0.01 : -0.01);
+    val = std::max(0.0, std::min(1.0, val));
+    SetValue(val);
+    SetDirty(true);
+  }
+};
+
+class NAMPanCircleControl : public IControl
+{
+public:
+  NAMPanCircleControl(const IRECT& bounds, int paramIdx)
+  : IControl(bounds, paramIdx)
+  {
+  }
+
+  void HideLabel() { mHideLabel = true; }
+
+  void OnMouseDown(float x, float y, const IMouseMod& mod) override
+  {
+    static auto lastClick = std::chrono::steady_clock::now();
+    auto now = std::chrono::steady_clock::now();
+    bool dbl = std::chrono::duration_cast<std::chrono::milliseconds>(now - lastClick).count() < 200;
+    lastClick = now;
+
+    if (dbl)
+    {
+      if (auto* p = GetParam())
+      {
+        double def = p->GetDefault(true);
+        SetValueFromUserInput(def, 0);
+        GetDelegate()->SendParameterValueFromUI(GetParamIdx(), def);
+        return;
+      }
+    }
+
+    if (mod.R) PromptUserInput(0);
+  }
+
+  void Draw(IGraphics& g) override
+  {
+    if (auto* p = GetParam())
+      SetValue(p->GetNormalized());
+
+    const auto r = mRECT;
+    const float cx = r.MW();
+    const float radius = std::min(r.W(), r.H()) * 0.5f;
+    const float cy = r.MH();
+    const auto circleRect = IRECT(cx - radius, cy - radius, cx + radius, cy + radius);
+
+    IText valText(static_cast<int>(radius * 0.6f), PluginColors::NAM_THEMEFONTCOLOR, "Roboto-Regular",
+                  EAlign::Center, EVAlign::Middle);
+    IText labelText(11, PluginColors::NAM_THEMEFONTCOLOR, "Roboto-Regular",
+                    EAlign::Center, EVAlign::Top);
+
+    if (mMouseIsOver)
+      g.FillEllipse(PluginColors::MOUSEOVER, circleRect);
+
+    g.DrawEllipse(COLOR_WHITE, circleRect, nullptr, 1.5f);
+
+    char buf[16];
+    if (auto* pParam = GetParam())
+    {
+      WDL_String disp;
+      pParam->GetDisplay(disp);
+      snprintf(buf, sizeof(buf), "%s", disp.Get());
+    }
+    else
+      snprintf(buf, sizeof(buf), "C");
+    g.DrawText(valText, buf, circleRect);
+    if (!mHideLabel)
+    {
+      const auto labelRect = IRECT(r.L, circleRect.B + 2, r.R, r.B);
+      g.DrawText(labelText, "Pan", labelRect);
+    }
+  }
+
+  void OnMouseDrag(float x, float y, float dX, float dY, const IMouseMod& mod) override
+  {
+    double val = GetValue() - dY * 0.005;
+    val = std::max(0.0, std::min(1.0, val));
+    SetValue(val);
+    SetDirty(true);
+  }
+
+  void OnMouseWheel(float x, float y, const IMouseMod& mod, float d) override
+  {
+    double val = GetValue() + (d > 0 ? 0.01 : -0.01);
+    val = std::max(0.0, std::min(1.0, val));
+    SetValue(val);
+    SetDirty(true);
+  }
+
+private:
+  bool mHideLabel = false;
+};
+
 class NAMKnobControl : public IVKnobControl, public IBitmapBase
 {
 public:
@@ -294,6 +517,13 @@ public:
 
   void HideLabel() { mStyle.showLabel = false; }
   void HideValue() { mStyle.showValue = false; }
+
+  void OnInit() override
+  {
+    IVKnobControl::OnInit();
+    if (auto* p = GetParam())
+      SetValue(p->GetNormalized());
+  }
 
   void OnRescale() override { mBitmap = GetUI()->GetScaledBitmap(mBitmap); }
 
@@ -337,6 +567,13 @@ public:
       SetValueFromUserInput(def, 0);
       GetDelegate()->SendParameterValueFromUI(GetParamIdx(), def);
     }
+  }
+
+  void Draw(IGraphics& g) override
+  {
+    if (auto* p = GetParam())
+      SetValue(p->GetNormalized());
+    IVKnobControl::Draw(g);
   }
 
   void DrawWidget(IGraphics& g) override
@@ -743,6 +980,55 @@ private:
   NAMGetButtonControl* mGetButton = nullptr;
 };
 
+class NAMLabelControl : public ITextControl
+{
+public:
+  NAMLabelControl(const IRECT& bounds, const char* str, const IText& text)
+  : ITextControl(bounds, str, text), mParamIdx(-1)
+  {
+    mDblAsSingleClick = false;
+    mIgnoreMouse = false;
+  }
+
+  NAMLabelControl(const IRECT& bounds, const char* str, const IText& text, int paramIdx)
+  : ITextControl(bounds, str, text), mParamIdx(paramIdx)
+  {
+    mDblAsSingleClick = false;
+    mIgnoreMouse = false;
+  }
+
+  void OnMouseDown(float x, float y, const IMouseMod& mod) override
+  {
+    static auto lastClick = std::chrono::steady_clock::now();
+    auto now = std::chrono::steady_clock::now();
+    bool dbl = std::chrono::duration_cast<std::chrono::milliseconds>(now - lastClick).count() < 200;
+    lastClick = now;
+
+    if (dbl)
+    {
+      if (mParamIdx >= 0)
+      {
+        if (auto* ui = GetUI())
+        {
+          if (auto* param = GetDelegate()->GetParam(mParamIdx))
+          {
+            double def = param->GetDefault(true);
+            GetDelegate()->SendParameterValueFromUI(mParamIdx, def);
+            ui->ForControlWithParam(mParamIdx, [def](IControl* c) {
+              c->SetValueFromUserInput(def, 0);
+            });
+            ui->SetAllControlsDirty();
+          }
+        }
+      }
+      return;
+    }
+  }
+
+private:
+  int mParamIdx;
+};
+
 class NAMMeterControl : public IVPeakAvgMeterControl<>, public IBitmapBase
 {
   static constexpr float KMeterMin = -70.0f;
@@ -1013,7 +1299,7 @@ public:
     const auto style = mStyle.WithDrawFrame(false).WithValueText(text);
 
     const auto titleArea = GetRECT().GetPadded(-(pad + 10.0f)).GetFromTop(50.0f);
-    AddNamedChildControl(new IVLabelControl(titleArea, "SETTINGS", titleStyle), mControlNames.title);
+    AddNamedChildControl(new IVLabelControl(titleArea, "ABOUT", titleStyle), mControlNames.title);
 
     {
       const auto aboutArea = GetRECT().GetPadded(-40.0f, 60.0f, -40.0f, 40.0f);
@@ -1067,15 +1353,15 @@ private:
         buildInfoStr.SetFormatted(100, "Version %s %s %s", verStr.Get(), "unknown", "unknown");
       }
 
-      AddChildControl(new IVLabelControl(GetRECT().SubRectVertical(5, 0), "IMPULSE", mStyle));
-      AddChildControl(new IVLabelControl(GetRECT().SubRectVertical(5, 1), "By Tonkraf", mStyle));
-      AddChildControl(new IVLabelControl(GetRECT().SubRectVertical(5, 2), buildInfoStr.Get(), mStyle));
-      AddChildControl(new IURLControl(GetRECT().SubRectVertical(5, 3),
-                                      "Plug-in development: Steve Atkinson, Oli Larkin, ... ",
-                                      "https://github.com/sdatkinson/NeuralAmpModelerPlugin/graphs/contributors", mText,
-                                      COLOR_TRANSPARENT, PluginColors::HELP_TEXT_MO, PluginColors::HELP_TEXT_CLICKED));
-      AddChildControl(new IURLControl(GetRECT().SubRectVertical(5, 4), "www.tonkraf.com",
-                                      "https://www.tonkraf.com", mText, COLOR_TRANSPARENT,
+      const auto r = GetRECT();
+      const float itemH = 24.0f;
+      const float gap = 4.0f;
+      const float totalH = itemH * 3.0f + gap * 2.0f;
+      const float top = r.T + (r.H() - totalH) * 0.5f;
+      AddChildControl(new IVLabelControl(IRECT(r.L, top, r.R, top + itemH), "By Tonkraf", mStyle));
+      AddChildControl(new IVLabelControl(IRECT(r.L, top + itemH + gap, r.R, top + itemH * 2.0f + gap), buildInfoStr.Get(), mStyle));
+      AddChildControl(new IURLControl(IRECT(r.L, top + itemH * 2.0f + gap * 2.0f, r.R, top + itemH * 3.0f + gap * 2.0f),
+                                      "www.tonkraf.com", "https://www.tonkraf.com", mText, COLOR_TRANSPARENT,
                                       PluginColors::HELP_TEXT_MO, PluginColors::HELP_TEXT_CLICKED));
     };
 

@@ -2,6 +2,8 @@
 //
 // Simplified for Impulse IR-only plugin.
 
+#include "Impulse.h"
+#include <iostream>
 #include "json.hpp"
 
 void Impulse::_UnserializeApplyConfig(nlohmann::json& config)
@@ -55,40 +57,18 @@ void Impulse::_UnserializeApplyConfig(nlohmann::json& config)
   }
 }
 
-int _UnserializePathsAndParams(const iplug::IByteChunk& chunk, int startPos, nlohmann::json& config,
-                               std::vector<std::string>& paramNames)
-{
-  int pos = startPos;
-  WDL_String path;
-
-  for (int i = 0; i < kNumIRs; i++)
-  {
-    pos = chunk.GetStr(path, pos);
-    config["IRPath" + std::to_string(i)] = std::string(path.Get());
-  }
-
-  for (auto it = paramNames.begin(); it != paramNames.end(); ++it)
-  {
-    double v = 0.0;
-    pos = chunk.Get(&v, pos);
-    config[*it] = v;
-  }
-  return pos;
-}
-
-int _GetConfigFrom_0_9_2(const iplug::IByteChunk& chunk, int startPos, nlohmann::json& config)
-{
-  std::vector<std::string> paramNames{
-    "Input", "Gate", "Output", "Trim", "NoiseGateActive", "IR Mode",
-    "IR 1", "Phase", "Level", "Mute", "Delay", "Pan",
-    "IR 2", "Phase", "Level", "Mute", "Delay", "Pan",
-    "IR 3", "Phase", "Level", "Mute", "Delay", "Pan",
-    "IR 4", "Phase", "Level", "Mute", "Delay", "Pan"
-  };
-
-  int pos = _UnserializePathsAndParams(chunk, startPos, config, paramNames);
-  return pos;
-}
+// Direct index mapping from old 0.9.2 format (30 doubles at old param indices)
+// to current param indices. Old indices 1 (Gate) and 4 (NoiseGateActive) were
+// removed, so the current index order is shifted: old[0->Input]->current[0],
+// old[2->Output]->current[1], old[3->Trim]->current[2], old[5->Mode]->current[3],
+// old[6..29]->current[4..27].
+static const int kOldToNewIdx[30] = {
+   0, -1,  1,  2, -1,  3,   // Input, Gate(skip), Output, Trim, NoiseGate(skip), Mode
+   4,  5,  6,  7,  8,  9,   // IR1
+  10, 11, 12, 13, 14, 15,   // IR2
+  16, 17, 18, 19, 20, 21,   // IR3
+  22, 23, 24, 25, 26, 27    // IR4
+};
 
 class _Version
 {
@@ -116,6 +96,10 @@ public:
     mPatch = parts[2];
   };
 
+  bool operator==(const _Version& other) const
+  {
+    return GetMajor() == other.GetMajor() && GetMinor() == other.GetMinor() && GetPatch() == other.GetPatch();
+  };
   bool operator>=(const _Version& other) const
   {
     if (GetMajor() > other.GetMajor()) return true;
@@ -144,18 +128,49 @@ int Impulse::_UnserializeStateWithKnownVersion(const iplug::IByteChunk& chunk, i
   std::string versionStr(wVersion.Get());
   _Version version(versionStr);
 
-  nlohmann::json config;
-  if (version >= _Version(0, 9, 2))
+  if (version == _Version(0, 9, 2))
   {
-    pos = _GetConfigFrom_0_9_2(chunk, pos, config);
+    // Old 0.9.2 format: 4 paths + 30 doubles at old param indices
+    // (Gate at index 1, NoiseGateActive at index 4 both removed)
+    WDL_String paths[kNumIRs];
+    for (int i = 0; i < kNumIRs; i++)
+      pos = chunk.GetStr(paths[i], pos);
+
+    ENTER_PARAMS_MUTEX
+
+    for (int i = 0; i < 30; i++)
+    {
+      double v = 0.0;
+      pos = chunk.Get(&v, pos);
+      if (kOldToNewIdx[i] >= 0)
+        GetParam(kOldToNewIdx[i])->Set(v);
+    }
+
+    OnParamReset(iplug::EParamSource::kPresetRecall);
+    LEAVE_PARAMS_MUTEX
+
+    for (int i = 0; i < kNumIRs; i++)
+    {
+      mIRSlots[i].path.Set(paths[i].Get());
+      if (paths[i].GetLength())
+        _StageIR(mIRSlots[i].path, i);
+    }
   }
   else
   {
-    // Legacy fallback: just try to load params directly
+    // Current or future format: paths are manually serialized before
+    // SerializeParams; read them here before UnserializeParams.
+    WDL_String path;
+    for (int i = 0; i < kNumIRs; i++)
+    {
+      pos = chunk.GetStr(path, pos);
+      mIRSlots[i].path.Set(path.Get());
+      if (path.GetLength())
+        _StageIR(mIRSlots[i].path, i);
+    }
     pos = UnserializeParams(chunk, pos);
-    return pos;
   }
-  _UnserializeApplyConfig(config);
+
   return pos;
 }
 

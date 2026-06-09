@@ -1,6 +1,2 @@
 build-mac/
-build-win/
-build-web/
 .DS_Store
-*.xcuserdatad
-*.xcworkspace/xcuserdata/

@@ -1,7 +1,7 @@
 #define PLUG_NAME "Impulse"
 #define PLUG_MFR "Tonkraf"
 #define PLUG_VERSION_HEX 0x00000902
-#define PLUG_VERSION_STR "0.9.2"
+#define PLUG_VERSION_STR "1.0.0"
 #define PLUG_UNIQUE_ID 'vxge'
 #define PLUG_MFR_ID 'Tonk'
 #define PLUG_URL_STR "https://github.com/sdatkinson/NeuralAmpModelerPlugin"

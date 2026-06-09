@@ -4,10 +4,10 @@
 #include <string>
 #include <vector>
 
-#include "../AudioDSPTools/dsp/ImpulseResponse.h"
-#include "../AudioDSPTools/dsp/RecursiveLinearFilter.h"
-#include "../AudioDSPTools/dsp/dsp.h"
-#include "../AudioDSPTools/dsp/wav.h"
+#include "AudioDSPTools/dsp/ImpulseResponse.h"
+#include "AudioDSPTools/dsp/RecursiveLinearFilter.h"
+#include "AudioDSPTools/dsp/dsp.h"
+#include "AudioDSPTools/dsp/wav.h"
 
 #include "Colors.h"
 
@@ -63,6 +63,31 @@ enum EParams
   kIRMute4,
   kIRDelay4,
   kIRPan4,
+  // Per-IR HPF/LPF (6 params per IR)
+  kIRHPFreq,
+  kIRHPFSlope,
+  kIRHPFBypass,
+  kIRLPFreq,
+  kIRLPFSlope,
+  kIRLPFBypass,
+  kIRHPFreq2,
+  kIRHPFSlope2,
+  kIRHPFBypass2,
+  kIRLPFreq2,
+  kIRLPFSlope2,
+  kIRLPFBypass2,
+  kIRHPFreq3,
+  kIRHPFSlope3,
+  kIRHPFBypass3,
+  kIRLPFreq3,
+  kIRLPFSlope3,
+  kIRLPFBypass3,
+  kIRHPFreq4,
+  kIRHPFSlope4,
+  kIRHPFBypass4,
+  kIRLPFreq4,
+  kIRLPFSlope4,
+  kIRLPFBypass4,
   kNumParams
 };
 
@@ -72,6 +97,10 @@ enum ECtrlTags
   kCtrlTagIRFileBrowser2,
   kCtrlTagIRFileBrowser3,
   kCtrlTagIRFileBrowser4,
+  kCtrlTagPanLabel,
+  kCtrlTagPanLabel2,
+  kCtrlTagPanLabel3,
+  kCtrlTagPanLabel4,
   kCtrlTagInputMeter,
   kCtrlTagOutputMeter,
   kCtrlTagSettingsBox,
@@ -173,11 +202,17 @@ private:
     std::vector<double> delayBuffer;
     size_t delayWritePos = 0;
     WDL_String path;
+    // Per-IR HPF/LPF filters (up to 3 cascaded stages)
+    std::vector<recursive_linear_filter::HighPass> hpfStages;
+    std::vector<recursive_linear_filter::LowPass> lpfStages;
   };
   std::array<IRSlot, kNumIRs> mIRSlots;
 
-  // Post-IR filters
-  recursive_linear_filter::HighPass mHighPass;
+  // Retired IRs awaiting destruction on idle thread (avoids audio thread stall)
+  std::vector<std::unique_ptr<dsp::ImpulseResponse>> mIRRetirement;
+
+  // DC blocker (post-mix, before output)
+  recursive_linear_filter::HighPass mDCBlocker;
 
   // Cached IR mode to avoid per-block param lookup
   int mIRMode = 0;
@@ -193,4 +228,7 @@ private:
   WDL_String mHighLightColor{PluginColors::NAM_THEMECOLOR.ToColorCode()};
 
   NAMSender mInputSender, mOutputSender;
+  
+  // Click-free fade for IR toggles
+  int mFadeCounter = 0;
 };
